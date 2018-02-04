@@ -1,2 +1,2 @@
 # DB_MSSQL_DML
-Data manipulate Language
+Data manipulate Language (MS SQLServer)
