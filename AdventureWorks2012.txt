@@ -1,0 +1,73 @@
+
+==================
+MS SQL Server 2012
+==================
+
+---SQL Server service should have Admin Writes
+---1. Open Services.msc
+---2. Search "SQL Server" service
+---3. Go to "Login" tab
+---4. Change previliages/rights to run to Admin level
+
+1. Copy mdf to destination folder
+    copy R:\AdventureWorks2012_Data.mdf C:\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA
+    copy R:\AdventureWorks2012_Data.mdf C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA
+2. Run
+    CREATE DATABASE AdventureWorks2012
+    ON (FILENAME = 'C:\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA\AdventureWorks2012_Data.mdf')
+    ON (FILENAME = 'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA\AdventureWorks2012_Data.mdf')
+    FOR ATTACH_REBUILD_LOG ;
+===
+
+1. Copy mdf to destination folder
+    copy R:\NORTHWND.MDF C:\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA
+2. Run
+    CREATE DATABASE NorthWind
+    ON (FILENAME = 'C:\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\DATA\NORTHWND.MDF')
+    FOR ATTACH_REBUILD_LOG ;
+---
+USE [AdventureWorks2012]
+GO
+EXEC sp_addrolemember N'db_datawriter', N'user01'
+EXEC sp_addrolemember N'db_datareader', N'user01'
+---
+
+CREATE LOGIN user01 WITH PASSWORD = 'pass01'
+GO
+
+Use AdventureWorks2012;
+GO
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'user01')
+BEGIN
+    CREATE USER [user01] FOR LOGIN [user01]
+    EXEC sp_addrolemember N'db_owner',      N'user01'
+    EXEC sp_addrolemember N'db_datawriter', N'user01'
+    EXEC sp_addrolemember N'db_datareader', N'user01'
+END;
+GO
+
+===
+USE [master];
+GO
+CREATE LOGIN user01 
+    WITH PASSWORD    = N'pass01',
+    CHECK_POLICY     = OFF,
+    CHECK_EXPIRATION = OFF;
+GO
+EXEC sp_addsrvrolemember 
+    @loginame = N'user01', 
+    @rolename = N'sysadmin';
+---    
+
+
+   
+
+
+
+
+
+
+
+
+
+
