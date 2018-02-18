@@ -1,0 +1,72 @@
+
+====================================================================================================
+SELF JOIN
+----------------------------------------------------------------------------------------------------
+
+SELECT [EmployeeID],[LastName],[FirstName],[Title],[ReportsTo]
+  FROM [NorthWind].[dbo].[Employees]
+
+EmployeeID  LastName             FirstName  Title                          ReportsTo
+----------- -------------------- ---------- ------------------------------ -----------
+1           Davolio              Nancy      Sales Representative           2
+2           Fuller               Andrew     Vice President, Sales          NULL
+3           Leverling            Janet      Sales Representative           2
+4           Peacock              Margaret   Sales Representative           2
+5           Buchanan             Steven     Sales Manager                  2
+6           Suyama               Michael    Sales Representative           5
+7           King                 Robert     Sales Representative           5
+8           Callahan             Laura      Inside Sales Coordinator       2
+9           Dodsworth            Anne       Sales Representative           5
+
+(9 row(s) affected)
+
+====================================================================================================
+일단 JOIN을 하면 Table의 Record들은 모두 DISPLAY가 된다.
+따라서 E Table의 Data는 모두 DISPLAY가 되는데, 여기에 JOIN을 값들(Manager Name)을 추가로 DISPLAY하게 된다
+ReportsTo의 값이 없는 'Fuller'의 경우는 Match가 안되므로 DISPLAY가 안된다.
+(INNER) JOIN이기 때문이 그렇게 된다.
+----------------------------------------------------------------------------------------------------
+
+SELECT E.EmployeeID, (E.firstname + ' ' + e.lastname) employee, 
+	   M.EmployeeID, (M.firstname + ' ' + m.lastname) manager
+FROM [NorthWind].[dbo].[Employees] E 
+     INNER JOIN [NorthWind].[dbo].[Employees] M ON M.employeeid = e.reportsto
+ORDER BY M.EmployeeID
+
+EmployeeID  employee                        EmployeeID  manager
+----------- ------------------------------- ----------- -------------------------------
+1           Nancy Davolio                   2           Andrew Fuller
+3           Janet Leverling                 2           Andrew Fuller
+4           Margaret Peacock                2           Andrew Fuller
+5           Steven Buchanan                 2           Andrew Fuller
+8           Laura Callahan                  2           Andrew Fuller
+9           Anne Dodsworth                  5           Steven Buchanan
+6           Michael Suyama                  5           Steven Buchanan
+7           Robert King                     5           Steven Buchanan
+
+(8 row(s) affected)
+
+
+====================================================================================================
+LEFT JOIN이므로 Match되는 값이 없어도 LEFT Table의 9개 Record 모두 DISPLAY된다.
+----------------------------------------------------------------------------------------------------
+
+SELECT E.EmployeeID, (E.firstname + ' ' + e.lastname) employee, 
+	   M.EmployeeID, (M.firstname + ' ' + m.lastname) manager
+FROM [NorthWind].[dbo].[Employees] E
+	 LEFT JOIN [NorthWind].[dbo].[Employees] M ON M.employeeid = e.reportsto
+ORDER BY M.EmployeeID
+---
+EmployeeID  employee                        EmployeeID  manager
+----------- ------------------------------- ----------- -------------------------------
+2           Andrew Fuller                   NULL        NULL
+3           Janet Leverling                 2           Andrew Fuller
+4           Margaret Peacock                2           Andrew Fuller
+5           Steven Buchanan                 2           Andrew Fuller
+8           Laura Callahan                  2           Andrew Fuller
+1           Nancy Davolio                   2           Andrew Fuller
+9           Anne Dodsworth                  5           Steven Buchanan
+6           Michael Suyama                  5           Steven Buchanan
+7           Robert King                     5           Steven Buchanan
+
+(9 row(s) affected)
