@@ -7,12 +7,21 @@
     );
     
 /* AUTO INCREMENT */
-
+    CREATE TABLE departments
+    ( department_id int IDENTITY(1,1) NOT NULL,
+      department_name char(50) NOT NULL,
+      CONSTRAINT departments_pk PRIMARY KEY (department_id)
+    );
 
 /* SEED & RE-SEED */
 
 
 /* PRIMARY KEY */
+    CREATE TABLE departments
+    ( department_id int PRIMARY KEY NOT NULL,
+      department_name char(50) NOT NULL
+    );
+
     CREATE TABLE departments
     ( department_id int NOT NULL,
       department_name char(50) NOT NULL,
@@ -50,12 +59,14 @@ sp_rename 'table_name', 'new_table_name';
     sp_rename 'TABLE_A.Col_AB', 'Col_CC', 'COLUMN';
     
 /* 컬럼 삭제 */
-    alter table [테이블명] drop [컬럼명];
+    ALTER TABLE departments
+    DROP COLUMN department_name;
 
 /* 컬럼명 변경 및 타입 변경 */
     ALTER TABLE TABLE_A 
     ALTER COLUMN Col_AB varchar(10) NULL
 
+====================================================================================================
 /* 테이블명 수정 */
     sp_rename 'table_name', 'new_table_name';
 
