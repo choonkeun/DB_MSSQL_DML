@@ -5,14 +5,14 @@
     SELECT TOP 500 wr.RMANumber, wo.WorkOrderNumber, part.PartNumber, wpl.Quantity, RMAQUantity, RMAReason, RMAProcess,
         wr.RMARemark, cp.CompanyName, '0' AS ReceivedQuantity, Initial, WoTypeCode, Finished
     FROM worma wr
-         INNER JOIN wopartlist wpl ON wpl.WoPartListID = wr.WoPartListID
-         INNER JOIN part ON part.PartID = wpl.PartID
-         INNER JOIN workorder wo ON wo.WorkOrderNumber = wr.WorkOrderNumber
-         INNER JOIN employee em ON em.username = wo.SoldUser
-    LEFT OUTER JOIN company cp ON  cp.CompanyID = wo.CustomerID
-    WHERE REPLACE(REPLACE(REPLACE(part.PartNumber,'-',''),'/',''),' ','') LIKE @PN AND
-            wo.CustomerID LIKE @Customer AND wo.SoldUser LIKE @SoldUser AND
-            (ShippingDate >= @Fromdate AND ShippingDate <= @ToDate)
+            INNER JOIN wopartlist wpl      ON wpl.WoPartListID = wr.WoPartListID
+            INNER JOIN part                ON part.PartID = wpl.PartID
+            INNER JOIN workorder wo        ON wo.WorkOrderNumber = wr.WorkOrderNumber
+            INNER JOIN employee em         ON em.username = wo.SoldUser
+       LEFT OUTER JOIN company cp          ON cp.CompanyID = wo.CustomerID
+    WHERE REPLACE(REPLACE(REPLACE(part.PartNumber,'-',''),'/',''),' ','') LIKE @PN 
+          AND wo.CustomerID LIKE @Customer AND wo.SoldUser LIKE @SoldUser 
+          AND (ShippingDate >= @Fromdate AND ShippingDate <= @ToDate)
     ORDER BY RMANumber DESC
 
 ====================================================================================================
