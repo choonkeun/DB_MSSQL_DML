@@ -1,8 +1,22 @@
 
 ====================================================================================================
-SUBQUERY, WHERE IN, DISTINCT, INSERT INTO SELECT, SELECT INTO, SELECT MAX()
+SUBQUERY, WHERE IN, DISTINCT, INSERT INTO SELECT, SELECT INTO, SELECT MAX(), CASE WHEN, BETWEEN
 ====================================================================================================
 
+---BETWEEN
+    select * from calsysbo.dbo.po where lastModDate >= '01/01/2010' and lastModDate <= '04/30/2010' --> same results
+    select * from calsysbo.dbo.po where lastModDate between '01/01/2010' and '04/30/2010'           --> same results
+    select * from calsysbo.dbo.po where lastModDate between '2010/01/01' and '2010/04/30'           --> same results
+    select * from calsysbo.dbo.po where lastModDate between '2010-01-01' and '2010-04-30'           --> same results
+====================================================================================================
+----CASE WHEN
+    SELECT CASE WHEN a.Hold = 1 AND a.HoldUser = 'saSmith' THEN ISNULL(BroadcastQuantity, '0')
+                ELSE ISNULL(StockQuantity, '0')
+            END AS BroadcastQuantity
+    FROM part AS a INNER JOIN stockquantity_and_cost AS b ON b.PartID = a.PartID
+    WHERE a.PartID = @PartID
+====================================================================================================
+    
 Use NorthWind
 SELECT CompanyName, ContactName, OrderCount = (SELECT COUNT(O.OrderId) FROM [Orders] O WHERE O.CustomerId = C.CustomerId)
   FROM Customers C 
@@ -15,6 +29,35 @@ Antonio Moreno Taquería                 Antonio Moreno                 7
 Around the Horn                          Thomas Hardy                   13
 Berglunds snabbköp                      Christina Berglund             18
 Blauer See Delikatessen                  Hanna Moos                     7
+
+
+---SUBQUERY: WHERE, FROM, WHERE IN ()
+
+    SELECT FirstName, LastName, OrderCount = (SELECT COUNT(O.Id) FROM [Order] O WHERE O.CustomerId = C.Id)
+      FROM Customer C 
+  
+    SELECT ISNULL(SUM(StockQuantity),'0') FROM Part
+        INNER JOIN stockquantity_and_cost sc ON part.PartID = sc.PartID
+    WHERE PartNumber = (SELECT PartNumber FROM part WHERE PartID = 83232)
+
+    PartID      PartNumber        PartType ConditionCode        PartNumberID
+    ----------- ----------------- -------- -------------------- ---------------------
+    83232       371-4199          1        cd01                 371-4199od183232
+    83233       371-4199          1        cd03                 371-4199od583233
+    83234       371-4199          1        cd04                 371-4199od283234
+
+    SELECT Part.PartID,Part.PartNumber,PartType,ConditionCode,PartNumberID
+    FROM Part
+        INNER JOIN (SELECT PartNumber FROM part WHERE PartID = 83232) P ON P.PartNumber = Part.PartNumber
+        INNER JOIN stockquantity_and_cost sc ON part.PartID = sc.PartID
+
+    PartID      PartNumber    PartType ConditionCode        PartNumberID
+    ----------- ------------- -------- -------------------- -----------------
+    83232       371-4199     1        cd01                 	371-4199od183232
+    83233       371-4199     1        cd03                 	371-4199od583233
+    83234       371-4199     1        cd04                 	371-4199od283234
+
+    (3 row(s) affected)
 ====================================================================================================
 SELECT ProductName
   FROM Products 
@@ -54,6 +97,62 @@ DISTINCT operates on a single column. DISTINCT for multiple columns is not suppo
 SELECT DISTINCT Country
   FROM Suppliers
  ORDER BY COUNTRY
+ 
+---DISTINCT: DISTINCT operates on a single column. DISTINCT for multiple columns is not supported.
+    SELECT DISTINCT returns only distinct (different) values.
+    SELECT DISTINCT eliminates duplicate records from the results.
+    DISTINCT can be used with aggregates: COUNT, AVG, MAX, etc.
+
+    SELECT COUNT(DISTINCT VendorName) FROM calsysbo.dbo.po where OrderedBy = 'Smith'        ----------- 780
+    SELECT VendorName FROM calsysbo.dbo.po  where OrderedBy = 'Smith' GROUP BY VendorName   ----------- (780 row(s) affected)
+
+    select DISTINCT VendorName, Year(OrderedDate), ShipVia
+    from calsysbo.dbo.po
+    where OrderedBy = 'Smith'
+    order by VendorName, Year(OrderedDate)
+
+    select VendorName, Year(OrderedDate), ShipVia
+    from calsysbo.dbo.po
+    where OrderedBy = 'Smith'
+    order by VendorName, Year(OrderedDate)
+
+    SELECT DISTINCT P.VendorName, PO.Cnt
+      FROM calsysbo.dbo.po P
+      INNER JOIN (SELECT VendorName, COUNT(VendorName) Cnt FROM calsysbo.dbo.po Group By VendorName) PO
+            ON PO.VendorName = P.VendorName
+     where OrderedBy = 'Smith'
+    Order by P.VendorName
+    
+    SELECT DISTINCT P.VendorName, PO.Cnt
+      FROM calsysbo.dbo.po P
+      INNER JOIN (SELECT VendorName, COUNT(VendorName) Cnt FROM calsysbo.dbo.po where OrderedBy = 'Smith' Group By VendorName) PO
+            ON PO.VendorName = P.VendorName
+     where OrderedBy = 'Smith'
+    Order by P.VendorName
+    
+    ---Same Results
+    SELECT VendorName, Count(*) FROM calsysbo.dbo.po  where OrderedBy = 'Smith' group by VendorName Order by VendorName
+    
+    VendorName                        Cnt
+    --------------------------------- -----------
+    123ssinc (ebay)                   1
+    360 Technologies                  10
+    4thdimension2 (ebay)              1
+    A3net Servers, Inc.               1
+    Abacus Solutions, LLC.            12
+    Absolute Systems                  1
+    Abtech Systems                    8
+    ACAL Supply Chain                 1
+    ACC, Inc.                         9
+    Access Computer Parts             2
+    Acclinet Corporation              3
+    ACORN Paper Products Company      70
+    adam_tech3 (ebay)                 1
+    Adaptable Computer                3
+    Adaptable Computers               2
+    ADP Tech, Inc                     2
+    ADP Technologies                  25
+ 
 ====================================================================================================
 SELECT COUNT (DISTINCT Country)  --MIN(), MAX(), AVR()
   FROM Supplier
