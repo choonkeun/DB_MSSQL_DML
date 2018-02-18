@@ -1,0 +1,139 @@
+
+====================================================================================================
+SUBQUERY, WHERE IN, DISTINCT, INSERT INTO SELECT, SELECT INTO, SELECT MAX()
+====================================================================================================
+
+Use NorthWind
+SELECT CompanyName, ContactName, OrderCount = (SELECT COUNT(O.OrderId) FROM [Orders] O WHERE O.CustomerId = C.CustomerId)
+  FROM Customers C 
+  
+CompanyName                              ContactName                    OrderCount
+---------------------------------------- ------------------------------ -----------
+Alfreds Futterkiste                      Maria Anders                   6
+Ana Trujillo Emparedados y helados       Ana Trujillo                   4
+Antonio Moreno Taquería                 Antonio Moreno                 7
+Around the Horn                          Thomas Hardy                   13
+Berglunds snabbköp                      Christina Berglund             18
+Blauer See Delikatessen                  Hanna Moos                     7
+====================================================================================================
+SELECT ProductName
+  FROM Products 
+ WHERE ProductId IN (SELECT ProductId FROM [Order Details] WHERE Quantity > 100)   
+
+ProductName
+----------------------------------------
+Guaraná Fantástica
+Schoggi Schokolade
+Chartreuse verte
+Jack's New England Clam Chowder
+----------------------------------------
+
+
+SELECT SupplierId, CompanyName, City, Country
+  FROM Suppliers
+ WHERE Country IN ('USA', 'UK', 'Japan')
+ 
+SupplierId  CompanyName                              City            Country
+----------- ---------------------------------------- --------------- ---------------
+1           Exotic Liquids                           London          UK
+2           New Orleans Cajun Delights               New Orleans     USA
+3           Grandma Kelly's Homestead                Ann Arbor       USA
+4           Tokyo Traders                            Tokyo           Japan
+6           Mayumi's                                 Osaka           Japan
+8           Specialty Biscuits, Ltd.                 Manchester      UK
+16          Bigfoot Breweries                        Bend            USA
+19          New England Seafood Cannery              Boston          USA
+
+(8 row(s) affected)
+ 
+====================================================================================================
+---http://www.dofactory.com/sql/select-distinct
+DISTINCT can be used with aggregates: COUNT, AVG, MAX, etc.
+DISTINCT operates on a single column. DISTINCT for multiple columns is not supported
+
+SELECT DISTINCT Country
+  FROM Suppliers
+ ORDER BY COUNTRY
+====================================================================================================
+SELECT COUNT (DISTINCT Country)  --MIN(), MAX(), AVR()
+  FROM Supplier
+---
+SQL OFFSET-FETCH Clause  
+    OFFSET excludes the first set of records.
+    OFFSET can only be used with an ORDER BY clause.
+    OFFSET with FETCH NEXT returns a defined window of records.
+    OFFSET with FETCH NEXT is great for building pagination support.
+    
+1. exclude first n records is: 
+    SELECT column-names
+      FROM table-name
+     ORDER BY column-names
+    OFFSET n ROWS
+
+2. exclude first n records and return only the next m records:
+    SELECT column-names
+      FROM table-name
+     ORDER BY column-names
+    OFFSET n ROWS
+     FETCH NEXT m ROWS ONLY
+====================================================================================================
+SQL SELECT INTO Statement
+SELECT INTO copies data from one table into a new table.
+SELECT INTO creates a new table located in the default filegroup.
+
+SELECT column-names
+  INTO new-table-name
+  FROM table-name
+ WHERE EXISTS 
+      (SELECT column-name FROM table-name WHERE condition)
+      
+SELECT * INTO SupplierUSA
+  FROM Supplier
+ WHERE Country = 'USA'
+ 
+---SQL INSERT INTO SELECT Statement
+INSERT INTO SELECT copies data from one table to another table.
+INSERT INTO SELECT requires that data types in source and target tables match.
+
+INSERT INTO Customer (FirstName, LastName, City, Country, Phone)
+SELECT LEFT(ContactName, CHARINDEX(' ',ContactName) - 1) AS FirstName, 
+       SUBSTRING(ContactName, CHARINDEX(' ',ContactName) + 1, 100) AS LastName, 
+       City, Country, Phone
+  FROM Supplier
+ WHERE Country = 'Canada'       
+
+====================================================================================================
+
+SELECT * FROM [Order Details] where OrderID = 10248 ORDER BY OrderId
+
+OrderID     ProductID   UnitPrice             Quantity Discount
+----------- ----------- --------------------- -------- -------------
+10248       11          14.00                 12       0
+10248       42          9.80                  10       0
+10248       72          34.80                 5        0
+(3 row(s) affected)
+
+SELECT OrderId, max(Quantity) Qty FROM [Order Details]
+GROUP BY OrderId
+ORDER BY OrderId
+
+OrderId     Qty
+----------- ------
+10248       12
+10249       40
+10250       35
+
+====================================================================================================
+SELECT O.OrderId, O.CustomerId, Format(O.OrderDate,'MM/dd/yyyy') as OrderDate, OD.Qty
+  FROM Orders O 
+  JOIN (SELECT OrderId, max(Quantity) Qty FROM [Order Details] GROUP BY OrderId) OD
+       ON O.OrderID = OD.OrderID
+ORDER BY O.OrderId
+
+OrderId     CustomerId OrderDate    Qty
+----------- ---------- ------------ ------
+10248       VINET      07/04/1996   12
+10249       TOMSP      07/05/1996   40
+10250       HANAR      07/08/1996   35
+10251       VICTE      07/08/1996   20
+10252       SUPRD      07/09/1996   40
