@@ -13,7 +13,11 @@
 
 
 /* PRIMARY KEY */
-
+    CREATE TABLE departments
+    ( department_id int NOT NULL,
+      department_name char(50) NOT NULL,
+      CONSTRAINT departments_pk PRIMARY KEY (department_id)
+    );
 
 /* FORIEGN KEY */
 
@@ -24,24 +28,36 @@
 /* RE-INDEX */
 
 ====================================================================================================
+sp_rename 'table_name', 'new_table_name';
+====================================================================================================
 /* 컬럼 추가 */
-    alter table [테이블명] add [컬럼명] [타입] [옵션]; 
-    ex) alter table [테이블명] add [컬럼명] varchar(100) not null default '0'; 
-    ex) alter table [테이블명] add [컬럼명] varchar(100) not null default '0'; 
-    ex) alter table [테이블명] add [컬럼명] varchar(100) not null default '0'; 
-    ex) alter table [테이블명] add [컬럼명] varchar(100) not null default '0'; 
-
+    
+    ALTER TABLE dbo.TABLE_A
+    ADD [Col_AB] varchar(10) NOT NULL DEFAULT 0, 
+        [Col_AC] varchar(100) NULL,
+        [Col_AD] [INT] NULL
+        
+    ALTER TABLE dbo.TABLE_A
+    ADD [Col_AB] [INT] NOT NULL CONSTRAINT IsLimitedByNumOfUsers_Default DEFAULT 0,
+        [Col_AC] varchar(100) NULL,
+        [NumOfUsersLimit] [INT] NULL
+        
+/* 컬럼 변경 */
+    ALTER TABLE table_name ALTER COLUMN column_name column_type;
+    ALTER TABLE supplier   ALTER COLUMN supplier_name VARCHAR(100) NOT NULL,
+    
+/* 컬럼이름 변경 */
+    sp_rename 'TABLE_A.Col_AB', 'Col_CC', 'COLUMN';
+    
 /* 컬럼 삭제 */
     alter table [테이블명] drop [컬럼명];
 
 /* 컬럼명 변경 및 타입 변경 */
-    alter table [테이블명] change [컬럼명] [변경할컬럼명] varchar(12);
-
-/* 컬럼 타입 수정 */
-    alter table [테이블명] modify [컬럼명] varchar(14);
+    ALTER TABLE TABLE_A 
+    ALTER COLUMN Col_AB varchar(10) NULL
 
 /* 테이블명 수정 */
-    alter table [테이블명] rename [변경할테이블명];
+    sp_rename 'table_name', 'new_table_name';
 
 /* 테이블 삭제 */
     drop table [테이블명];
