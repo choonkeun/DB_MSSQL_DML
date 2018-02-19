@@ -1,0 +1,84 @@
+
+USE AdventureWorks2012
+USE NorthWind
+
+SELECT schema_id, SCHEMA_NAME(schema_id) AS [Schema], type, name AS TableName, max_column_id_used
+FROM sys.tables
+order by schema_id, name
+
+schema_id   Schema                     type  TableName                                   max_column_id_used
+----------- -------------------------- ---- -------------------------------------------- ------------------
+1           dbo                        U    AWBuildVersion                               4
+1           dbo                        U    DatabaseLog                                  8
+1           dbo                        U    ErrorLog                                     9
+5           HumanResources             U    Department                                   4
+5           HumanResources             U    Employee                                     16
+5           HumanResources             U    EmployeeDepartmentHistory                    6
+5           HumanResources             U    EmployeePayHistory                           5
+5           HumanResources             U    JobCandidate                                 4
+5           HumanResources             U    Shift                                        5
+6           Person                     U    Address                                      9
+6           Person                     U    AddressType                                  4
+6           Person                     U    BusinessEntity                               3
+6           Person                     U    BusinessEntityAddress                        5
+6           Person                     U    BusinessEntityContact                        5
+6           Person                     U    ContactType                                  3
+6           Person                     U    CountryRegion                                3
+6           Person                     U    EmailAddress                                 5
+6           Person                     U    Password                                     5
+6           Person                     U    Person                                       13
+6           Person                     U    PersonPhone                                  4
+6           Person                     U    PhoneNumberType                              3
+6           Person                     U    StateProvince                                8
+7           Production                 U    BillOfMaterials                              9
+7           Production                 U    Culture                                      3
+7           Production                 U    Document                                     14
+7           Production                 U    Illustration                                 3
+7           Production                 U    Location                                     5
+7           Production                 U    Product                                      25
+7           Production                 U    ProductCategory                              4
+7           Production                 U    ProductCostHistory                           5
+7           Production                 U    ProductDescription                           4
+7           Production                 U    ProductDocument                              3
+7           Production                 U    ProductInventory                             7
+7           Production                 U    ProductListPriceHistory                      5
+7           Production                 U    ProductModel                                 6
+7           Production                 U    ProductModelIllustration                     3
+7           Production                 U    ProductModelProductDescriptionCulture        4
+7           Production                 U    ProductPhoto                                 6
+7           Production                 U    ProductProductPhoto                          4
+7           Production                 U    ProductReview                                8
+7           Production                 U    ProductSubcategory                           5
+7           Production                 U    ScrapReason                                  3
+7           Production                 U    TransactionHistory                           9
+7           Production                 U    TransactionHistoryArchive                    9
+7           Production                 U    UnitMeasure                                  3
+7           Production                 U    WorkOrder                                    10
+7           Production                 U    WorkOrderRouting                             12
+8           Purchasing                 U    ProductVendor                                11
+8           Purchasing                 U    PurchaseOrderDetail                          11
+8           Purchasing                 U    PurchaseOrderHeader                          13
+8           Purchasing                 U    ShipMethod                                   6
+8           Purchasing                 U    Vendor                                       8
+9           Sales                      U    CountryRegionCurrency                        3
+9           Sales                      U    CreditCard                                   6
+9           Sales                      U    Currency                                     3
+9           Sales                      U    CurrencyRate                                 7
+9           Sales                      U    Customer                                     7
+9           Sales                      U    PersonCreditCard                             3
+9           Sales                      U    SalesOrderDetail                             11
+9           Sales                      U    SalesOrderHeader                             26
+9           Sales                      U    SalesOrderHeaderSalesReason                  3
+9           Sales                      U    SalesPerson                                  9
+9           Sales                      U    SalesPersonQuotaHistory                      5
+9           Sales                      U    SalesReason                                  4
+9           Sales                      U    SalesTaxRate                                 7
+9           Sales                      U    SalesTerritory                               10
+9           Sales                      U    SalesTerritoryHistory                        6
+9           Sales                      U    ShoppingCartItem                             6
+9           Sales                      U    SpecialOffer                                 11
+9           Sales                      U    SpecialOfferProduct                          4
+9           Sales                      U    Store                                        6
+
+(71 row(s) affected)
+
