@@ -1,0 +1,111 @@
+
+http://csharp-video-tutorials.blogspot.co.uk/search?updated-max=2012-09-25T14:51:00-07:00&max-results=1&reverse-paginate=true
+
+----------------------------------------------------------------------------------------------------
+--SELECT: View, Table Variable, Local and Global Temp Tables, Derived table, CTE
+----------------------------------------------------------------------------------------------------
+
+CREATE TABLE Employee
+(
+    Id            int Primary Key,
+    Name          nvarchar(30),
+    Gender        nvarchar(10),
+    DepartmentId  int
+)
+
+
+CREATE TABLE Department
+(
+    DeptId    int Primary Key,
+    DeptName  nvarchar(20)
+)
+
+Insert into Department values (1,'IT')
+Insert into Department values (2,'Payroll')
+Insert into Department values (3,'HR')
+Insert into Department values (4,'Admin')
+
+Insert into Employee values (1,'John', 'Male', 3)
+Insert into Employee values (2,'Mike', 'Male', 2)
+Insert into Employee values (3,'Pam', 'Female', 1)
+Insert into Employee values (4,'Todd', 'Male', 4)
+Insert into Employee values (5,'Sara', 'Female', 1)
+Insert into Employee values (6,'Ben', 'Male', 3) 
+
+
+---------------------------------
+1. View
+---------------------------------
+
+    CREATE VIEW vwEmployeeCount
+    AS
+        SELECT DeptName, DepartmentId, COUNT(*) as TotalEmployees
+          FROM Employee
+          JOIN Department  on Employee.DepartmentId = Department.DeptId
+         GROUP BY DeptName, DepartmentId
+
+    Select DeptName, TotalEmployees from vwEmployeeCount where TotalEmployees >= 2
+
+---------------------------------
+2. Temporary Table
+---------------------------------
+
+    SELECT DeptName, DepartmentId, COUNT(*) as TotalEmployees
+      INTO #TempEmployeeCount
+      FROM Employee
+      JOIN Department  on Employee.DepartmentId = Department.DeptId
+     GROUP BY DeptName, DepartmentId
+
+    Select DeptName, TotalEmployees From #TempEmployeeCount where TotalEmployees >= 2
+
+    Drop Table #TempEmployeeCount
+
+
+---------------------------------
+3.Using Table Variable
+---------------------------------
+
+    Declare @EmployeeCount table (
+                DeptName nvarchar(20), DepartmentId int, TotalEmployees int
+            )
+
+    INSERT @EmployeeCount
+    SELECT DeptName, DepartmentId, COUNT(*) as TotalEmployees
+      FROM Employee
+      JOIN Department  on Employee.DepartmentId = Department.DeptId
+     GROUP BY DeptName, DepartmentId
+
+    Select DeptName, TotalEmployees From @EmployeeCount where  TotalEmployees >= 2
+
+---------------------------------
+4. Derived tables : Available only in the context of the current query.
+---------------------------------
+
+SELECT DeptName, TotalEmployees
+ FROM (
+        SELECT DeptName, DepartmentId, COUNT(*) as TotalEmployees
+          FROM Employee
+          JOIN Department  on Employee.DepartmentId = Department.DeptId
+         GROUP BY DeptName, DepartmentId
+    ) AS EmployeeCount
+WHERE TotalEmployees >= 2
+
+
+---------------------------------
+5. CTE : Common Table Expressions
+---------------------------------
+
+WITH EmployeeCount(DeptName, DepartmentId, TotalEmployees)
+AS  (
+        SELECT DeptName, DepartmentId, COUNT(*) as TotalEmployees
+          FROM Employee
+          JOIN Department   on Employee.DepartmentId = Department.DeptId
+         GROUP by DeptName, DepartmentId
+    )
+
+Select DeptName, TotalEmployees from EmployeeCount where TotalEmployees >= 2
+
+
+
+
+
