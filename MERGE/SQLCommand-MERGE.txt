@@ -1,0 +1,177 @@
+
+https://docs.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql?view=sql-server-2017
+https://www.mssqltips.com/sqlservertip/1704/using-merge-in-sql-server-to-insert-update-and-delete-at-the-same-time/
+
+--------------------------------------
+IF EXIST - Simple INSERT or UPDATE
+--------------------------------------
+CREATE PROCEDURE usp_Upsert_Products_1
+    @ID INT,
+    @ProductName VARCHAR(100),
+    @UnitPrice MONEY
+AS
+    IF EXISTS (SELECT TOP 1 * FROM Products WHERE ID = @ID)
+       UPDATE Products
+          SET ProductName = @ProductName
+        WHERE ID = @ID
+    ELSE
+       INSERT INTO Products (ID, ProductName)
+       VALUES (@ID, @ProductName)
+    GO
+
+-------------------------------------------
+MERGE - Multiple INSERT OR UPDATE or DELETE
+-------------------------------------------
+[ WITH <common_table_expression> [,...n] ]
+MERGE
+    [ TOP ( expression ) [ PERCENT ] ]
+    [ INTO ] <target_table> [ WITH ( <merge_hint> ) ] [ [ AS ] table_alias ]
+USING <table_source>
+   ON <merge_search_condition>
+    [ WHEN MATCHED [ AND <clause_search_condition> ]
+           THEN <merge_matched> ] [ ...n ]
+    [ WHEN NOT MATCHED [ BY TARGET ] [ AND <clause_search_condition> ]
+           THEN <merge_not_matched> ]
+    [ WHEN NOT MATCHED BY SOURCE [ AND <clause_search_condition> ]
+           THEN <merge_matched> ] [ ...n ]
+    [ <output_clause> ]
+    [ OPTION ( <query_hint> [ ,...n ] ) ]
+;
+-------------------------------------------
+MERGE - Multiple INSERT OR UPDATE or DELETE
+-------------------------------------------
+CREATE PROCEDURE usp_Upsert_Products_2
+    @ID INT,
+    @ProductName VARCHAR(100),
+    @UnitPrice MONEY
+AS
+    MERGE Products  AS target
+    USING (SELECT @ID, @ProductName, @UnitPrice)
+       AS source (ID, PName, UnitPrice)
+    ON target.ID = source.ID
+
+    WHEN MATCHED AND target.UnitPrice <= 10.00
+    THEN UPDATE SET target.ProductName = source.PName
+
+    WHEN MATCHED AND target.UnitPrice > 10.00
+    THEN UPDATE SET target.UnitPrice = source.UnitPrice
+
+    WHEN NOT MATCHED --BY TARGET
+    THEN INSERT (ID, ProductName, UnitPrice)
+          VALUES (source.ID, source.PName, source.UnitPrice)
+
+    WHEN NOT MATCHED BY SOURCE
+    THEN DELETE;
+    GO
+
+-------------------------------------------
+MERGE - Sample 1
+-------------------------------------------
+MERGE INTO YourTable T
+     USING (
+            SELECT id, col1, col2
+              FROM other_table
+             WHERE tsql = 'cool'
+           ) S
+        ON T.id = S.id
+WHEN MATCHED THEN
+     UPDATE
+        SET col1 = S.col1, col2 = S.col2;
+
+-------------------------------------------
+MERGE - Sample 2
+-------------------------------------------
+-MERGE SQL statement: Synchronize the target table with refreshed data from source table
+
+MERGE Products          AS TARGET
+USING UpdatedProducts   AS SOURCE
+ON (TARGET.ProductID = SOURCE.ProductID)
+
+--When records are matched, update the records if there is any change
+WHEN MATCHED AND TARGET.ProductName <> SOURCE.ProductName OR TARGET.Rate <> SOURCE.Rate
+THEN UPDATE
+     SET TARGET.ProductName = SOURCE.ProductName, TARGET.Rate = SOURCE.Rate
+
+--When no records are matched, insert the incoming records from source table to target table
+WHEN NOT MATCHED BY TARGET
+THEN INSERT (ProductID, ProductName, Rate)
+     VALUES (SOURCE.ProductID, SOURCE.ProductName, SOURCE.Rate)
+
+--When there is a row that exists in target table and same record does not exist in source table
+--then delete this record from target table
+WHEN NOT MATCHED BY SOURCE
+THEN DELETE
+
+--$action specifies a column of type nvarchar(50) in the OUTPUT clause that returns one of three
+--values for each row: 'INSERT','UPDATE', 'DELETE', according to the action that was performed
+OUTPUT $action,
+    DELETED.ProductID       AS TargetProductID,
+    DELETED.ProductName     AS TargetProductName,
+    DELETED.Rate            AS TargetRate,
+    INSERTED.ProductID      AS SourceProductID,
+    INSERTED.ProductName    AS SourceProductName,
+    INSERTED.Rate           AS SourceRate;
+
+SELECT @@ROWCOUNT;
+GO
+
+-------------------------------------------
+MERGE - Sample 3: OUTPUT
+-------------------------------------------
+-- Create a temporary table variable to hold the output actions.  
+DECLARE @SummaryOfChanges TABLE(Change VARCHAR(20));  
+
+MERGE INTO Sales.SalesReason AS Target  
+USING (VALUES ('Recommendation','Other'), 
+              ('Review', 'Marketing'), 
+              ('Internet', 'Promotion')
+      )
+      AS Source (NewName, NewReasonType)  
+ON Target.Name = Source.NewName  
+
+WHEN MATCHED 
+THEN UPDATE SET ReasonType = Source.NewReasonType  
+WHEN NOT MATCHED BY TARGET 
+THEN INSERT (Name, ReasonType) VALUES (NewName, NewReasonType)  
+
+OUTPUT $action INTO @SummaryOfChanges;  
+
+-- Query the results of the table variable.  
+SELECT Change, COUNT(*) AS CountPerChange  
+  FROM @SummaryOfChanges  
+ GROUP BY Change;
+
+-------------------------------------------
+MERGE - Sample 4: INSERT INTO
+-------------------------------------------
+CREATE TABLE Production.UpdatedInventory  
+    (ProductID INT NOT NULL, LocationID int, NewQty int, PreviousQty int,  
+     CONSTRAINT PK_Inventory PRIMARY KEY CLUSTERED (ProductID, LocationID));  
+GO 
+ 
+INSERT INTO Production.UpdatedInventory  
+SELECT ProductID, LocationID, NewQty, PreviousQty   
+FROM  
+    (   
+        MERGE Production.ProductInventory AS pi  
+        USING (SELECT ProductID, SUM(OrderQty)   
+                 FROM Sales.SalesOrderDetail AS sod  
+                 JOIN Sales.SalesOrderHeader AS soh  
+                   ON sod.SalesOrderID = soh.SalesOrderID 
+                      AND soh.OrderDate BETWEEN '20030701' AND '20030731'  
+                GROUP BY ProductID) AS src (ProductID, OrderQty)  
+        ON pi.ProductID = src.ProductID  
+        
+        WHEN MATCHED AND pi.Quantity - src.OrderQty >= 0   
+            THEN UPDATE SET pi.Quantity = pi.Quantity - src.OrderQty  
+        WHEN MATCHED AND pi.Quantity - src.OrderQty <= 0   
+            THEN DELETE  
+            
+        OUTPUT $action, Inserted.ProductID, Inserted.LocationID, 
+               Inserted.Quantity AS NewQty, Deleted.Quantity AS PreviousQty
+    ) 
+    AS Changes (Action, ProductID, LocationID, NewQty, PreviousQty) 
+WHERE Action = 'UPDATE';  
+GO
+
+
