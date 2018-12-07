@@ -1,0 +1,48 @@
+
+https://codingsight.com/methods-to-rank-rows-in-sql-server-rownumber-rank-denserank-and-ntile/
+
+CREATE TABLE StudentScore
+(
+  Student_ID INT PRIMARY KEY,
+  Student_Name NVARCHAR (50),
+  Student_Score INT
+) 
+GO
+ 
+INSERT INTO StudentScore VALUES (1,'Ali', 978)
+INSERT INTO StudentScore VALUES (2,'Zaid', 770)
+INSERT INTO StudentScore VALUES (3,'Mohd', 1140)
+INSERT INTO StudentScore VALUES (4,'Jack', 770)
+INSERT INTO StudentScore VALUES (5,'John', 1240)
+INSERT INTO StudentScore VALUES (6,'Mike', 1140)
+INSERT INTO StudentScore VALUES (7,'Goerge', 885)
+
+SELECT * FROM StudentScore ORDER BY Student_Score
+
+--ROW_NUMBER() 
+SELECT *, ROW_NUMBER() OVER( ORDER BY Student_Score) AS RowNumberRank
+FROM StudentScore
+
+SELECT *, ROW_NUMBER() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
+FROM StudentScore
+
+--RANK()
+SELECT *, RANK() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
+FROM StudentScore
+
+--DENSE_RANK() 
+SELECT *, DENSE_RANK() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
+FROM StudentScore
+
+--NTILE(N)
+SELECT *,  NTILE(4) OVER( ORDER BY Student_Score) AS NTILERank
+FROM StudentScore
+
+---Putting All Together---
+SELECT *, ROW_NUMBER() OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RowNumberRank,
+          RANK ()  OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RankRank,
+		  DENSE_RANK ()  OVER(PARTITION BY CLASS ORDER BY Student_Score) AS DenseRankRank,
+		  NTILE(7) OVER(PARTITION BY CLASS ORDER BY Student_Score) AS NTILERank
+FROM StudentScore
+GO
+
