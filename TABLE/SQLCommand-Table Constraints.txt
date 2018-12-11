@@ -1,0 +1,53 @@
+-- Disable all table constraints
+ALTER TABLE MyTable NOCHECK CONSTRAINT ALL
+
+-- Enable all table constraints
+ALTER TABLE MyTable WITH CHECK CONSTRAINT ALL
+
+-- Disable single constraint
+ALTER TABLE MyTable NOCHECK CONSTRAINT MyConstraint
+
+-- Enable single constraint
+ALTER TABLE MyTable WITH CHECK CHECK CONSTRAINT MyConstraint
+ Question
+--------------
+MSSQL 외래키등 제약조건으로 인해 삽입이 안될때
+외래키가 지정된 상태 또는 다른 제약 조건등으로 인하여 벌크데이터 또는 기존에 입력했던 데이터의 무결성으로 인하여 삽입되지 않을 경우에는 잠시 제약 조건을 비활성 시킬 수 있다.
+또는 제약조건을 걸려고 하다보니 기존에 입력되었던 방대한 데이터가 문제가 될 경우에는 제약조건을 걸 수 없는데 이때도 기존 데이타에는 제약을 걸지 않도록 할 수 있다.
+
+예문1) 기존 데이터가 입력된 테이블에 제약조건을 걸어보자
+ALTER TABLE buyTbl WITH NOCHECK
+    ADD CONSTRAINT FK_userTbl_buyTbl
+       FOREIGN KEY (UserId)
+       REFERENCES userTbl(UserId)
+
+예문2) - 제약조건을 무시하고 데이터를 삽입
+ALTER TABLE buyTbl  NOCHECK CONSTRAINT FK_userTbl_buyTbl
+GO
+
+INSERT INTO buyTbl VALUES (N'CJC', N'메모리', N'전자', 80, 10)
+INSERT INTO buyTbl VALUES (N'AJH', N'책',        N'서적', 15, 5)
+GO
+
+ALTER TABLE buyTbl CHECK CONSTRAINT FK_userTbl_buyTbl
+--------------
+EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
+EXEC sp_MSForEachTable 'ALTER TABLE ? DISABLE TRIGGER ALL'
+EXEC sp_MSForEachTable 'DELETE FROM ?'
+EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
+EXEC sp_MSForEachTable 'ALTER TABLE ? ENABLE TRIGGER ALL'
+
+하지만, 그대로 사용하기엔 좀 부족해 보인다.
+아래 사항을 추가해서 사용해야겠다.
+1. 삭제하지 않을 테이블을 지정할 수 있을 것.
+2. DELETE문 대신 TRUNCATE TABLE문을 사용할 수 있다면… TRUNCATE TABLE문을 쓰도록 분기할 것. 
+   (테이블이 VIEW에 schema binding되어 있다면… DELETE문을 쓸 수 없을 듯)
+3. IDENTITY 속성의 컬럼을 포함한 경우, Reseed 할 것.
+  이때, 한번도 데이터가 INSERT되지 않았거나 TRUNCATE한 테이블과… 그렇지 않은 테이블의 Reseed 값을 달리 적용해야 함에 유의!!!
+
+EXEC sp_MSForEachTable 'TRUNCATE TABLE ?' 한줄 테이블 삭제
+EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
+EXEC sp_MSForEachTable 'TRUNCATE TABLE ?'
+EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL' 외래키 제약조건 무시, 세줄 테이블 삭제
+---
+
