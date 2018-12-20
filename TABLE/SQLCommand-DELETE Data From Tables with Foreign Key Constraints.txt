@@ -1,0 +1,361 @@
+https://www.mssqltips.com/sqlservertip/4059/script-to-delete-data-from-sql-server-tables-with-foreign-key-constraints/
+
+EXEC sp_changedbowner 'sa'  --Enable Drawing Diagrams
+
+----------------------------------------------------------------------------------------------------
+Script to Delete Data from SQL Server Tables with Foreign Key Constraints
+====================================================================================================
+---STEP 1: Create Stored Procedure to Display Foreign Key Tree
+----------------------------------------------------------------------------------------------------
+use MSSQLTips -- change to your own db
+
+if object_id('dbo.usp_searchFK', 'P') is not null
+                drop proc dbo.usp_SearchFK;
+go
+create proc dbo.usp_SearchFK 
+  @table varchar(256) -- use two part name convention
+, @lvl int=0 -- do not change
+, @ParentTable varchar(256)='' -- do not change
+, @debug bit = 1
+as
+begin
+                set nocount on;
+                declare @dbg bit;
+                set @dbg=@debug;
+                if object_id('tempdb..#tbl', 'U') is null
+                                create table  #tbl  (id int identity, tablename varchar(256), lvl int, ParentTable varchar(256));
+                declare @curS cursor;
+                if @lvl = 0
+                                insert into #tbl (tablename, lvl, ParentTable)
+                                select @table, @lvl, Null;
+                else
+                                insert into #tbl (tablename, lvl, ParentTable)
+                                select @table, @lvl,@ParentTable;
+                if @dbg=1           
+                                print replicate('----', @lvl) + 'lvl ' + cast(@lvl as varchar(10)) + ' = ' + @table;
+                
+                if not exists (select * from sys.foreign_keys where referenced_object_id = object_id(@table))
+                                return;
+                else
+                begin -- else
+                                set @ParentTable = @table;
+                                set @curS = cursor for
+                                select tablename=object_schema_name(parent_object_id)+'.'+object_name(parent_object_id)
+                                from sys.foreign_keys 
+                                where referenced_object_id = object_id(@table)
+                                and parent_object_id <> referenced_object_id; -- add this to prevent self-referencing which can create a indefinitive loop;
+
+                                open @curS;
+                                fetch next from @curS into @table;
+
+                                while @@fetch_status = 0
+                                begin --while
+                                                set @lvl = @lvl+1;
+                                                -- recursive call
+                                                exec dbo.usp_SearchFK @table, @lvl, @ParentTable, @dbg;
+                                                set @lvl = @lvl-1;
+                                                fetch next from @curS into @table;
+                                end --while
+                                close @curS;
+                                deallocate @curS;
+                end -- else
+                if @lvl = 0
+                                select * from #tbl;
+                return;
+end
+go
+
+
+----------------------------------------------------------------------------------------------------
+---STEP 2: Generates Scripts To Deleting Specific SQL Server Records with Foreign Keys
+----------------------------------------------------------------------------------------------------
+use AdventureWorks2012
+GO
+exec dbo.usp_SearchFK 'Person.Person'
+exec dbo.usp_SearchFK 'Production.WorkOrder'
+exec dbo.usp_SearchFK 'Production.Product'
+exec dbo.usp_SearchFK 'Purchasing.PurchaseOrderDetail'
+
+----------------------------------------------------------------------------------------------------
+exec dbo.usp_SearchFK 'Production.WorkOrder'
+----------------------------------------------------------------------------------------------------
+Results:
+lvl 0 = Production.WorkOrder
+----lvl 1 = Production.WorkOrderRouting
+
+----------------------------------------------------------------------------------------------------
+exec dbo.usp_SearchFK 'Production.Product'
+----------------------------------------------------------------------------------------------------
+Results:
+lvl 0 = Production.Product
+----lvl 1 = Production.BillOfMaterials
+----lvl 1 = Production.BillOfMaterials
+----lvl 1 = Production.ProductCostHistory
+----lvl 1 = Production.ProductDocument
+----lvl 1 = Production.ProductInventory
+----lvl 1 = Production.ProductListPriceHistory
+----lvl 1 = Production.ProductProductPhoto
+----lvl 1 = Production.ProductReview
+----lvl 1 = Purchasing.ProductVendor
+----lvl 1 = Purchasing.PurchaseOrderDetail
+----lvl 1 = Sales.ShoppingCartItem
+----lvl 1 = Sales.SpecialOfferProduct           --Parent
+--------lvl 2 = Sales.SalesOrderDetail          --Grand Parent
+----lvl 1 = Production.TransactionHistory
+----lvl 1 = Production.WorkOrder
+--------lvl 2 = Production.WorkOrderRouting
+
+
+----------------------------------------------------------------------------------------------------
+---STEP 3: Generates Scripts To Deleting Specific SQL Server Records with Foreign Keys
+----------------------------------------------------------------------------------------------------
+-- the following is an example to show what code can be generated to do the table deletionset nocount on;
+
+use AdventureWorks2012
+GO
+
+if object_id('tempdb..#tmp') is not null
+                drop table #tmp;
+create table  #tmp  (id int, tablename varchar(256), lvl int, ParentTable varchar(256));
+
+insert into #tmp 
+exec dbo.usp_SearchFK @table='Production.Product', @debug=0;
+
+declare @where varchar(max) ='where Production.Product.ProductID=998' -- if @where clause is null or empty, it will delete tables as a whole with the right order
+declare @curFK cursor, @fk_object_id int;
+declare @sqlcmd varchar(max)='', @crlf char(2)=char(0x0d)+char(0x0a);
+declare @child varchar(256), @parent varchar(256), @lvl int, @id int;
+declare @i int;
+declare @t table (tablename varchar(128));
+declare @curT cursor;
+if isnull(@where, '')= ''
+begin
+                set @curT = cursor for select tablename, lvl from #tmp order by lvl desc
+                open @curT;
+                fetch next from @curT into @child, @lvl;
+                while @@fetch_status = 0
+                begin -- loop @curT
+                                if not exists (select 1 from @t where tablename=@child)
+                                                insert into @t (tablename) values (@child);
+                                fetch next from @curT into @child, @lvl;
+                end -- loop @curT
+                close @curT;
+                deallocate @curT;
+
+                select  @sqlcmd = @sqlcmd + 'delete from ' + tablename + @crlf from @t ;
+                print @sqlcmd;
+end
+else
+begin 
+                declare curT cursor for
+                select  lvl, id
+                from #tmp
+                order by lvl desc;
+
+                open curT;
+                fetch next from curT into  @lvl, @id;
+                while @@FETCH_STATUS =0
+                begin
+                                set @i=0;
+                                if @lvl =0
+                                begin -- this is the root level
+                                                select @sqlcmd = 'delete from ' + tablename from #tmp where id = @id;
+                                end -- this is the roolt level
+
+                                while @i < @lvl
+                                begin -- while
+
+                                                select top 1 @child=TableName, @parent=ParentTable from #tmp where id <= @id-@i and lvl <= @lvl-@i order by lvl desc, id desc;
+                                                set @curFK = cursor for
+                                                select object_id from sys.foreign_keys 
+                                                where parent_object_id = object_id(@child)
+                                                and referenced_object_id = object_id(@parent)
+
+                                                open @curFK;
+                                                fetch next from @curFk into @fk_object_id
+                                                while @@fetch_status =0
+                                                begin -- @curFK
+
+                                                                if @i=0
+                                                                                set @sqlcmd = 'delete from ' + @child + @crlf +
+                                                                                'from ' + @child + @crlf + 'inner join ' + @parent  ;
+                                                                else
+                                                                                set @sqlcmd = @sqlcmd + @crlf + 'inner join ' + @parent ;
+
+                                                                ;with c as 
+                                                                (
+                                                                                select child = object_schema_name(fc.parent_object_id)+'.' + object_name(fc.parent_object_id), child_col=c.name
+                                                                                , parent = object_schema_name(fc.referenced_object_id)+'.' + object_name(fc.referenced_object_id), parent_col=c2.name
+                                                                                , rnk = row_number() over (order by (select null))
+                                                                                from sys.foreign_key_columns fc
+                                                                                inner join sys.columns c
+                                                                                on fc.parent_column_id = c.column_id
+                                                                                and fc.parent_object_id = c.object_id
+                                                                                inner join sys.columns c2
+                                                                                on fc.referenced_column_id = c2.column_id
+                                                                                and fc.referenced_object_id = c2.object_id
+                                                                                where fc.constraint_object_id=@fk_object_id
+                                                                )
+                                                                                select @sqlcmd =@sqlcmd +  case rnk when 1 then ' on '  else ' and ' end 
+                                                                                + @child +'.'+ child_col +'='  +  @parent   +'.' + parent_col
+                                                                                from c;
+                                                                                fetch next from @curFK into @fk_object_id;
+                                                end --@curFK
+                                                close @curFK;
+                                                deallocate @curFK;
+                                                set @i = @i +1;
+                                end --while
+                                print @sqlcmd + @crlf + @where + ';';
+                                print '';
+                                fetch next from curT into  @lvl, @id;
+                end
+                close curT;
+                deallocate curT;
+end
+
+go
+
+----------------------------------------------------------------------------------------------------
+RESULTS:
+
+(17 row(s) affected)
+
+use AdventureWorks2012
+GO
+
+delete from Sales.SalesOrderDetail
+from Sales.SalesOrderDetail
+inner join Sales.SpecialOfferProduct on Sales.SalesOrderDetail.SpecialOfferID=Sales.SpecialOfferProduct.SpecialOfferID and Sales.SalesOrderDetail.ProductID=Sales.SpecialOfferProduct.ProductID
+inner join Production.Product on Sales.SpecialOfferProduct.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.WorkOrderRouting
+from Production.WorkOrderRouting
+inner join Production.WorkOrder on Production.WorkOrderRouting.WorkOrderID=Production.WorkOrder.WorkOrderID
+inner join Production.Product on Production.WorkOrder.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.TransactionHistory
+from Production.TransactionHistory
+inner join Production.Product on Production.TransactionHistory.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.WorkOrder
+from Production.WorkOrder
+inner join Production.Product on Production.WorkOrder.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.BillOfMaterials
+from Production.BillOfMaterials
+inner join Production.Product on Production.BillOfMaterials.ComponentID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.BillOfMaterials
+from Production.BillOfMaterials
+inner join Production.Product on Production.BillOfMaterials.ComponentID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductCostHistory
+from Production.ProductCostHistory
+inner join Production.Product on Production.ProductCostHistory.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductDocument
+from Production.ProductDocument
+inner join Production.Product on Production.ProductDocument.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductInventory
+from Production.ProductInventory
+inner join Production.Product on Production.ProductInventory.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductListPriceHistory
+from Production.ProductListPriceHistory
+inner join Production.Product on Production.ProductListPriceHistory.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductProductPhoto
+from Production.ProductProductPhoto
+inner join Production.Product on Production.ProductProductPhoto.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.ProductReview
+from Production.ProductReview
+inner join Production.Product on Production.ProductReview.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Purchasing.ProductVendor
+from Purchasing.ProductVendor
+inner join Production.Product on Purchasing.ProductVendor.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Purchasing.PurchaseOrderDetail
+from Purchasing.PurchaseOrderDetail
+inner join Production.Product on Purchasing.PurchaseOrderDetail.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Sales.ShoppingCartItem
+from Sales.ShoppingCartItem
+inner join Production.Product on Sales.ShoppingCartItem.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Sales.SpecialOfferProduct
+from Sales.SpecialOfferProduct
+inner join Production.Product on Sales.SpecialOfferProduct.ProductID=Production.Product.ProductID
+where Production.Product.ProductID=998;
+
+delete from Production.Product
+where Production.Product.ProductID=998;
+
+
+----------------------------------------------------------------------------------------------------
+---STEP 4: RUN Generated Script
+----------------------------------------------------------------------------------------------------
+
+
+(685 row(s) affected)
+
+(236 row(s) affected)
+
+(786 row(s) affected)
+
+(236 row(s) affected)
+
+(1 row(s) affected)
+
+(0 row(s) affected)
+
+(1 row(s) affected)
+
+(1 row(s) affected)
+
+(2 row(s) affected)
+
+(1 row(s) affected)
+
+(1 row(s) affected)
+
+(0 row(s) affected)
+
+(0 row(s) affected)
+
+(0 row(s) affected)
+
+(0 row(s) affected)
+
+(3 row(s) affected)
+Msg 547, Level 16, State 0, Line 84
+The DELETE statement conflicted with the REFERENCE constraint "FK_BillOfMaterials_Product_ProductAssemblyID". 
+The conflict occurred in database "AdventureWorks2012", table "Production.BillOfMaterials", column 'ProductAssemblyID'.
+The statement has been terminated.
+
+----------------------------------------------------------------------------------------------------
+USE AdventureWorks2012;  
+ALTER TABLE Production.BillOfMaterials  NOCHECK CONSTRAINT FK_BillOfMaterials_Product_ProductAssemblyID;  
+DELETE FROM Production.Product  WHERE Production.Product.ProductID=998;
+ALTER TABLE Production.BillOfMaterials    CHECK CONSTRAINT FK_BillOfMaterials_Product_ProductAssemblyID;  
+GO 
+----------------------------------------------------------------------------------------------------
+
+
