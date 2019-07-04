@@ -1,0 +1,53 @@
+
+http://www.c-sharpcorner.com/article/how-to-optimize-an-sql-query/
+
+===========================
+How To Optimize SQL Queries
+===========================
+
+1. Avoid using "*" in select query
+    SELECT ID, Name FROM Students [O]
+    
+2. Avoid using functions in Where Clause
+    SELECT Name, DOB FROM Students WHERE DOB < getdate() [X]
+    
+    DECLARE @MyDate as date  
+    SET @MyDate = GetDate()  
+    SELECT Name, DOB FROM Students WHERE DOB < @MyDate [O] 
+    
+3. Avoid using Joins between two types of columns    
+
+4. Avoid using COUNT(*) from tables for getting row count
+    --> This count(*) makes the full scan of the table, whenever the code is executed.
+    
+5. Avoid using DISTINCT when Join Tables
+    SELECT DISTINCT s.Dept, d.Dept FROM Student s, Department d   
+    Where s.Dept = d.Dept [X]      
+    
+    SELECT d.Dept FROM Department d Where   
+    Exists ( SELECT ‘Y’ FROM Student s WHERE s.Dept = d.Dept ) [O] 
+    
+6. Avoid Using Temp Tables
+    --> It’s always suggested to use the “View”, where the View has more benefits
+    
+7. Avoid Using Triggers 
+    --> Trigger usages are the expensive process in the SQL, 
+    so try to avoid firing and executing the triggers. Don’t use the triggers with any constraints
+    and also avoid using the same triggers for multiple CRUD operations.
+    
+8. Avoid Dead locks during query executions
+
+9. Avoid Using Locks during read process
+    --> Lock of the tables may affect the other process to get impact; 
+    “WITH (NOLOCK)” which is equivalent to “READ UNCOMMITED” at transaction isolation.
+    This is also called a dirty read but this operation of using “With (NoLock)” can prevent 
+    the deadlock occurrences by multiple reads.
+
+    SELECT Name, ID, Address FROM Student WITH(NOLOCK) [O]  
+    
+    
+
+
+
+
+
