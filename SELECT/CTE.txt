@@ -39,7 +39,40 @@ PhoneCTE (BusinessEntityID, PhoneNumber) AS (
 SELECT FirstName, LastName, PhoneNumber
   FROM  PersonCTE
  INNER JOIN PhoneCTE ON PersonCTE.BusinessEntityID = PhoneCTE.BusinessEntityID;
+---;WITH CTE_SalesPerson (SalesPersonID, SalesCount) AS (
+      SELECT SalesPersonID, count(*)
+        FROM [AdventureWorks].[Sales].[SalesOrderHeader]
+       WHERE SubTotal > 500  --input parameter
+    GROUP BY SalesPersonID
+      HAVING SalesPersonID is not null
+    --ORDER BY SalesPersonID
+)
+SELECT SalesPersonID, (P.FirstName + ' ' + P.LastName) AS SalesName, SalesCount 
+  from CTE_SalesPerson AS S
+ INNER JOIN  [AdventureWorks].[Person].[Person] AS P ON P.BusinessEntityID = S.SalesPersonID
  
+SalesPersonID SalesName                   SalesCount
+------------- --------------------------- -----------
+284           Tete Mensa-Annan            122
+278           Garrett Vargas              205
+281           Shu Ito                     231
+275           Michael Blythe              392
+276           Linda Mitchell              366
+287           Amy Alberts                 33
+279           Tsvi Reiter                 361
+290           Ranjit Varkey Chudukatil    150
+282           José Saraiva                237
+288           Rachel Valdez               107
+285           Syed Abbas                  14
+274           Stephen Jiang               41
+286           Lynn Tsoflias               94
+280           Pamela Ansman-Wolfe         88
+289           Jae Pak                     300
+283           David Campbell              148
+277           Jillian Carson              402
+
+(17 rows affected)
+
 ---
 ;WITH CTE_employee ( BusinessEntityID ) AS (
 	SELECT [BusinessEntityID]
