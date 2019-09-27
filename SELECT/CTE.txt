@@ -24,6 +24,7 @@ NationalIDNumber --> EmployeeNumber
 JobTitle         --> Title
 
 ---
+
 ;WITH PersonCTE (BusinessEntityID, FirstName, LastName) AS (
     SELECT Person.BusinessEntityID,
                FirstName,
@@ -39,7 +40,29 @@ PhoneCTE (BusinessEntityID, PhoneNumber) AS (
 SELECT FirstName, LastName, PhoneNumber
   FROM  PersonCTE
  INNER JOIN PhoneCTE ON PersonCTE.BusinessEntityID = PhoneCTE.BusinessEntityID;
----;WITH CTE_SalesPerson (SalesPersonID, SalesCount) AS (
+---
+
+;WITH CTE_All_orders AS (
+    SELECT EmployeeID, COUNT(*) AS order_count
+    FROM Orders
+    GROUP BY EmployeeID
+),
+CTE_Late_orders AS (
+    SELECT EmployeeID, COUNT(*) AS order_count
+    FROM Orders
+    WHERE RequiredDate <= ShippedDate
+    GROUP BY EmployeeID 
+)
+SELECT 
+    Employees.ID, LastName, 
+    A.order_count AS total_order_count,
+    B.order_count AS late_order_count
+FROM Employees
+JOIN CTE_All_orders  AS A ON Employees.ID = A.EmployeeID 
+JOIN CTE_Late_orders AS B ON Employees.ID = B.EmployeeID
+---
+
+;WITH CTE_SalesPerson (SalesPersonID, SalesCount) AS (
       SELECT SalesPersonID, count(*)
         FROM [AdventureWorks].[Sales].[SalesOrderHeader]
        WHERE SubTotal > 500  --input parameter
@@ -72,14 +95,16 @@ SalesPersonID SalesName                   SalesCount
 277           Jillian Carson              402
 
 (17 rows affected)
-
 ---
+
 ;WITH CTE_employee ( BusinessEntityID ) AS (
-	SELECT [BusinessEntityID]
-	  FROM [AdventureWorks].[HumanResources].[Employee]
-	  --where gender = 'F'
-	  where VacationHours > 59
+    SELECT [BusinessEntityID]
+      FROM [AdventureWorks].[HumanResources].[Employee]
+      --where gender = 'F'
+      where VacationHours > 59
 )
 SELECT *
   FROM [AdventureWorks].[Purchasing].[PurchaseOrderHeader] AS P
-INNER JOIN CTE_employee AS E ON E.BusinessEntityID = P.EmployeeID;
+ INNER JOIN CTE_employee AS E ON E.BusinessEntityID = P.EmployeeID;
+---
+
