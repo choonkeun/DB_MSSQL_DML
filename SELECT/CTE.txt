@@ -1,4 +1,5 @@
-https://www.essentialsql.com/introduction-common-table-expressions-ctes/
+﻿https://www.essentialsql.com/introduction-common-table-expressions-ctes/
+https://docs.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql?view=sql-server-ver15
 
 A CTE (Common Table Expression) is temporary result set that 
 you can reference within another SELECT, INSERT, UPDATE, or DELETE statement.
@@ -24,7 +25,6 @@ NationalIDNumber --> EmployeeNumber
 JobTitle         --> Title
 
 ---
-
 ;WITH PersonCTE (BusinessEntityID, FirstName, LastName) AS (
     SELECT Person.BusinessEntityID,
                FirstName,
@@ -40,28 +40,8 @@ PhoneCTE (BusinessEntityID, PhoneNumber) AS (
 SELECT FirstName, LastName, PhoneNumber
   FROM  PersonCTE
  INNER JOIN PhoneCTE ON PersonCTE.BusinessEntityID = PhoneCTE.BusinessEntityID;
----
 
-;WITH CTE_All_orders AS (
-    SELECT EmployeeID, COUNT(*) AS order_count
-    FROM Orders
-    GROUP BY EmployeeID
-),
-CTE_Late_orders AS (
-    SELECT EmployeeID, COUNT(*) AS order_count
-    FROM Orders
-    WHERE RequiredDate <= ShippedDate
-    GROUP BY EmployeeID 
-)
-SELECT 
-    Employees.ID, LastName, 
-    A.order_count AS total_order_count,
-    B.order_count AS late_order_count
-FROM Employees
-JOIN CTE_All_orders  AS A ON Employees.ID = A.EmployeeID 
-JOIN CTE_Late_orders AS B ON Employees.ID = B.EmployeeID
 ---
-
 ;WITH CTE_SalesPerson (SalesPersonID, SalesCount) AS (
       SELECT SalesPersonID, count(*)
         FROM [AdventureWorks].[Sales].[SalesOrderHeader]
@@ -95,6 +75,17 @@ SalesPersonID SalesName                   SalesCount
 277           Jillian Carson              402
 
 (17 rows affected)
+
+---
+;WITH CTE_employee ( BusinessEntityID ) AS (
+	SELECT [BusinessEntityID]
+	  FROM [AdventureWorks].[HumanResources].[Employee]
+	  --where gender = 'F'
+	  where VacationHours > 59
+)
+SELECT *
+  FROM [AdventureWorks].[Purchasing].[PurchaseOrderHeader] AS P
+INNER JOIN CTE_employee AS E ON E.BusinessEntityID = P.EmployeeID;
 ---
 
 ;WITH CTE_employee ( BusinessEntityID ) AS (
@@ -102,9 +93,67 @@ SalesPersonID SalesName                   SalesCount
       FROM [AdventureWorks].[HumanResources].[Employee]
       --where gender = 'F'
       where VacationHours > 59
+),
+
+---Chained CTE
+CTE_entity ( BusinessEntityID ) AS (
+    SELECT LEFT([BusinessEntityID],2) AS Entity
+      FROM CTE_employee
 )
+
 SELECT *
   FROM [AdventureWorks].[Purchasing].[PurchaseOrderHeader] AS P
  INNER JOIN CTE_employee AS E ON E.BusinessEntityID = P.EmployeeID;
----
+
+===
+;WITH CTE1 AS (
+    SELECT 1 AS Col1
+),
+CTE2 AS (
+    SELECT COL1+1 AS Col2 
+    FROM CTE1   ---Chained CTE
+)
+SELECT CTE1.Col1, CTE2.Col2
+  FROM CTE1
+ CROSS JOIN CTE2
+GO
+
+===Rank, Row_Number
+WITH RankedData AS
+(
+	SELECT
+		SD.RecordId,
+		SD.TypeId,
+		SD.ActivityDate,
+		SD.MessageText,
+    	  Rank() OVER 
+			(PARTITION BY SD.TypeId 
+			     ORDER BY SD.ActivityDate DESC) AS 
+        ActivityRank,
+        ROW_NUMBER() OVER 
+            (PARTITION BY city
+                 ORDER BY first_name) AS
+        Row_Num,
+        ROW_NUMBER() OVER
+            (ORDER BY EmpName) AS
+        Row_Number  
+    FROM SampleData SD
+)
+SELECT * FROM RankedData
+
+===recursive 
+WITH DirectReports(ManagerID, EmployeeID, Title, EmployeeLevel) AS   
+(  
+    SELECT ManagerID, EmployeeID, Title, 0 AS EmployeeLevel  
+    FROM dbo.MyEmployees   
+    WHERE ManagerID IS NULL  
+    UNION ALL  
+    SELECT e.ManagerID, e.EmployeeID, e.Title, EmployeeLevel + 1  
+    FROM dbo.MyEmployees AS e  
+        INNER JOIN DirectReports AS d  
+        ON e.ManagerID = d.EmployeeID   
+)  
+SELECT ManagerID, EmployeeID, Title, EmployeeLevel   
+FROM DirectReports  
+ORDER BY ManagerID;  
 
