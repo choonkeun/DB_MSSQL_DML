@@ -1,0 +1,23 @@
+
+---Generates BCP XML Format File from database table
+
+C:\Users\Admin>BCP dbo.PRINTDATA format null 
+                -S devsqlserver 
+                -U username
+                -P password
+                -d DBName 
+                -c -x 
+                -f "C:\Projects\Health_Load\PRINTDATA.xml" 
+                -T
+C:\Users\Admin>
+
+---Load data with XML Format into database
+C:\Users\Admin>BCP dbo.PRINTDATA IN "C:\TEMP\INPUTData.txt" 
+                -S devsqlserver 
+                -U username
+                -P password
+                -d DBName 
+                -c
+                -f "C:\Projects\Health_Load\PRINTDATA.xml"
+                -T
+
