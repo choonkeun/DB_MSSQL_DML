@@ -1,0 +1,138 @@
+
+https://www.mssqltips.com/sqlservertip/4476/dynamically-generate-sql-server-bcp-format-files/
+
+https://www.mssqltips.com/sqlservertip/1060/bcp-xml-format-files-with-sql-server-2005/
+
+
+bcp {table|view|"query"}
+    {out|queryout|in|format}
+    {data_file|nul}
+    {[optional_argument]...}
+    
+out: The command exports data from a table or view into a data file.
+queryout: The command exports data retrieved through a query into a data file.
+in: The command imports data from a data file into a table or view.
+format: The command creates a format file based on a table or view. (Format files are explained later in the article.)
+    
+bcp AdventureWorks2008.HumanResources.Employee out C:\Data\EmployeeData.dat -S localhost\SqlSrv2008 -Uacct1 -Ppw123
+
+bcp "SELECT * FROM AdventureWorks2008.Person.Person" queryout C:\Data\PersonData_n.dat -N -S localhost\SqlSrv2008 -T -L 100
+
+bcp AdventureWorks2008..Contacts3 in C:\Data\PersonData_c2.dat -f C:\Data\PersonFormat_c3.fmt -S localhost\sqlsrv2008 -T
+
+10.0
+6
+1   SQLCHAR     0     12    ","     1   ContactID          ""
+2   SQLCHAR     0     100   ","     2   FirstName          SQL_Latin1_General_CP1_CI_AS
+3   SQLCHAR     0     100   ","     3   LastName           SQL_Latin1_General_CP1_CI_AS
+4   SQLCHAR     0     0     ","     5   Demographics       ""
+5   SQLCHAR     0     37    ","     6   rowguid            ""
+6   SQLCHAR     0     24    "\r\n"  7   ModifiedDate       ""
+---
+10.0
+13
+1   SQLINT      0     4     ""      1   BusinessEntityID       ""
+2   SQLNCHAR    2     4     ""      2   PersonType             SQL_Latin1_General_CP1_CI_AS
+3   SQLBIT      1     1     ""      3   NameStyle              ""
+4   SQLNCHAR    2     16    ""      4   Title                  SQL_Latin1_General_CP1_CI_AS
+5   SQLNCHAR    2     100   ""      5   FirstName              SQL_Latin1_General_CP1_CI_AS
+6   SQLNCHAR    2     100   ""      6   MiddleName             SQL_Latin1_General_CP1_CI_AS
+7   SQLNCHAR    2     100   ""      7   LastName               SQL_Latin1_General_CP1_CI_AS
+8   SQLNCHAR    2     20    ""      8   Suffix                 SQL_Latin1_General_CP1_CI_AS
+9   SQLINT      0     4     ""      9   EmailPromotion         ""
+10  SQLNCHAR    8     0     ""      10  AdditionalContactInfo  ""
+11  SQLNCHAR    8     0     ""      11  Demographics           ""
+12  SQLUNIQUEID 1     16    ""      12  rowguid                ""
+13  SQLDATETIME 0     8     ""      13  ModifiedDate           ""
+---
+10.0
+14
+1   SQLCHAR     0     0     "|"     0   xyz                     ""
+2   SQLCHAR     0     0     "|"     2   account                 Latin1_General_CI_AS
+3   SQLCHAR     0     0     "|"     0   xyz                     ""
+4   SQLCHAR     0     0     "|"     3   balance                 ""
+5   SQLCHAR     0     0     "|"     0   xyz                     ""
+6   SQLCHAR     0     0     "|"     5   dt_transaction          ""
+7   SQLCHAR     0     0     "|"     0   xyz                     ""
+8   SQLCHAR     0     0     "|"     0   xyz                     ""
+9   SQLCHAR     0     0     "|"     0   xyz                     ""
+10  SQLCHAR     0     0     "|"     0   xyz                     ""
+11  SQLCHAR     0     0     "|"     0   xyz                     ""
+12  SQLCHAR     0     0     "|"     0   xyz                     ""
+13  SQLCHAR     0     0     "|"     0   xyz                     ""
+14  SQLCHAR     0     0     "\r\n"  6   OperationUser           Latin1_General_CI_AS
+
+[Version]               =can be set to any number >= 9.0, so any bcp utility of SQL Server 2005+ can use this format file. I will set it to 10.0 as I do not have any SQL Server 2005 in my environment.
+[Number of columns]     =# of fields in the data source file, we will calculate the # of fields by reading the first line of the source file.
+[Host file field order] =1 to [Number of columns].
+[Host file data type]   ='SQLCHAR', this is a fixed value as we are dealing with ASCII data file only.
+[Prefix length]         =0, as we are dealing with ASCII data file only.
+[Host file data length] =0 as said in BOL "If you are creating a non-XML format file for a delimited text file, you can specify 0 for the host file data length of every data field.".
+[Terminator]            =value from an input parameter, such as "|" or comma ",".
+[Server column order]:0 = the column is ignored, N = the nth column of the destination table.
+[Server column name]:   the target table's column name. This seems not used by BCP utility, instead, BCP utility uses [Server column order] to determine the column position.
+[Column collation]:     only used for columns with char or varchar datatype, default to the collation setting of the database.
+
+8.0
+4
+1   SQLCHAR    0   12  "\t"     1   CategoryID    ""
+2   SQLCHAR    0   30  "\t"     2   CategoryName  SQL_Latin1_General_CP1_CI_AS
+3   SQLCHAR    0   0   "\t"     3   Description   SQL_Latin1_General_CP1_CI_AS
+4   SQLCHAR    0   0   "\r\n"   4   Picture       ""
+
+<?xml version="1.0"?>
+<BCPFORMAT xmlns="http://schemas.microsoft.com/sqlserver/2004/bulkload/format" xmlns:xsi="http:// www.w3.org/2001/XMLSchema-instance">
+  <RECORD>
+    <FIELD ID="1" xsi:type="CharFixed" LENGTH="7"/>
+    <FIELD ID="2" xsi:type="CharFixed" LENGTH="100"COLLATION="Latin1_General_CS_AS"/>
+    <FIELD ID="3" xsi:type="CharFixed" LENGTH="100"COLLATION="Latin1_General_CS_AS"/>
+    <FIELD ID="4" xsi:type="CharTerm" TERMINATOR="\r\n"MAX_LENGTH="24"/>
+  </RECORD>
+  <ROW>
+    <COLUMN SOURCE="1" NAME="DepartmentID" xsi:type="SQLSMALLINT"/>
+    <COLUMN SOURCE="2" NAME="Name" xsi:type="SQLNVARCHAR"/>
+    <COLUMN SOURCE="3" NAME="GroupName" xsi:type="SQLNVARCHAR"/>
+    <COLUMN SOURCE="4" NAME="ModifiedDate" xsi:type="SQLDATETIME"/>
+  </ROW>
+</BCPFORMAT>
+
+----------------------------------------------------------------------------------------------------
+Generates BCP Format File: At the Windows command prompt, enter the following bcp command
+----------------------------------------------------------------------------------------------------
+https://docs.microsoft.com/en-us/sql/relational-databases/import-export/create-a-format-file-sql-server
+
+bcp AdventureWorks2012.HumanResources.Department -T -n format nul -f Department-n.fmt
+bcp AdventureWorks2012.HumanResources.Department -T -c format nul -f Department-c.fmt 
+bcp AdventureWorks2012.HumanResources.Department -T -c format nul -f Department-c.xml -x –t
+
+format nul -f format_file	Specifies the non-XML format file.
+-n                          Specifies native data types.
+-c                          Specifies character data.
+-T                          Specifies that the bcp utility connects to SQL Server with a trusted connection using integrated security. 
+If -T is not specified, you must specify -U and -P to successfully log in.
+----------------------------------------------------------------------------------------------------
+
+Department-n.fmt:
+12.0  
+4  
+1  SQLSMALLINT   0       2       ""   1     DepartmentID         ""  
+2  SQLNCHAR      2       100     ""   2     Name                 SQL_Latin1_General_CP1_CI_AS  
+3  SQLNCHAR      2       100     ""   3     GroupName            SQL_Latin1_General_CP1_CI_AS  
+4  SQLDATETIME   0       8       ""   4     ModifiedDate         ""
+
+<?xml version="1.0"?>  
+<BCPFORMAT xmlns="http://schemas.microsoft.com/sqlserver/2004/bulkload/format" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">  
+ <RECORD>  
+  <FIELD ID="1" xsi:type="CharTerm" TERMINATOR="," MAX_LENGTH="7"/>  
+  <FIELD ID="2" xsi:type="CharTerm" TERMINATOR="," MAX_LENGTH="100" COLLATION="SQL_Latin1_General_CP1_CI_AS"/>  
+  <FIELD ID="3" xsi:type="CharTerm" TERMINATOR="," MAX_LENGTH="100" COLLATION="SQL_Latin1_General_CP1_CI_AS"/>  
+  <FIELD ID="4" xsi:type="CharTerm" TERMINATOR="\r\n" MAX_LENGTH="24"/>  
+ </RECORD>  
+ <ROW>  
+  <COLUMN SOURCE="1" NAME="DepartmentID" xsi:type="SQLSMALLINT"/>  
+  <COLUMN SOURCE="2" NAME="Name" xsi:type="SQLNVARCHAR"/>  
+  <COLUMN SOURCE="3" NAME="GroupName" xsi:type="SQLNVARCHAR"/>  
+  <COLUMN SOURCE="4" NAME="ModifiedDate" xsi:type="SQLDATETIME"/>  
+ </ROW>  
+</BCPFORMAT>
+
