@@ -1,0 +1,58 @@
+https://www.mssqltips.com/sqlservertip/5118/sql-server-cte-vs-temp-table-vs-table-variable-performance-test/
+
+CTE can only be used in the current query scope 
+whereas a temporary table or table variable can exist for the entire duration of the session
+
+Common Table Expressions (CTE) have two types, recursive and non-recursive
+
+*** CTEs are usually better when:
+
+SQL Server can do a good job of estimating how many rows will come out of it, and the contents of what those rows will be, or
+When what comes out of the CTE doesn’t really influence the behavior of the rest of the query, or
+When you’re not sure what portions of the CTE’s data will actually be necessary for the rest of the query (because SQL Server can figure out what parts to execute, and what parts to simply ignore)
+
+*** Temp tables are usually better when:
+
+You have to refer to the output multiple times, or
+When you need to pass data between stored procedures, or
+When you need to break a query up into phases to isolate unpredictable components that dramatically affect the behavior of the rest of the query
+
+
+-- CTE
+WITH t (customerid,lastorderdate) AS 
+(SELECT customerid,max(orderdate) FROM sales.SalesOrderHeader
+ GROUP BY customerid)
+SELECT * FROM sales.salesorderheader soh
+INNER JOIN t ON soh.customerid=t.customerid AND soh.orderdate=t.lastorderdate
+GO
+
+-- Temp table
+CREATE TABLE #temptable (customerid [int] NOT NULL PRIMARY KEY,lastorderdate [datetime] NULL);
+INSERT INTO #temptable
+SELECT customerid,max(orderdate) lastorderdate FROM sales.SalesOrderHeader
+ GROUP BY customerid;
+SELECT * from sales.salesorderheader soh
+INNER JOIN #temptable t ON soh.customerid=t.customerid AND soh.orderdate=t.lastorderdate
+drop table #temptable
+GO
+
+-- Table variable
+DECLARE @tablevariable TABLE (customerid [int] NOT NULL PRIMARY KEY,lastorderdate [datetime] NULL);
+INSERT INTO @tablevariable
+SELECT customerid,max(orderdate) lastorderdate FROM sales.SalesOrderHeader
+ GROUP BY customerid;
+SELECT * from sales.salesorderheader soh
+INNER JOIN @tablevariable t ON soh.customerid=t.customerid AND soh.orderdate=t.lastorderdate
+GO
+
+Query Type	    Reads	Writes	CPU	Duration (ms)
+CTE	            1378	0	47	497
+Temp table	    2146	51	109	544
+Table variable	133748	51	297	578
+
+
+
+
+
+
+

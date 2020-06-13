@@ -1,0 +1,92 @@
+--Temp Table: 
+CREATE TABLE dbo.#Cars 
+(   
+   Car_id int NOT NULL, 
+   ColorCode varchar(10), 
+   ModelName varchar(20), 
+   Code int, 
+   DateEntered datetime 
+) 
+   
+ALTER TABLE dbo.#Cars 
+   ADD CONSTRAINT [DF_DateEntered] DEFAULT (GETDATE()) FOR [DateEntered], 
+   PRIMARY KEY CLUSTERED ( [Car_id] ) 
+   ON [PRIMARY] 
+GO
+
+INSERT INTO dbo.#Cars (Car_id, ColorCode, ModelName, Code, DateEntered) 
+VALUES (1,'BlueGreen', 'Austen', 200801, GETDATE()) 
+
+SELECT Car_id, ColorCode, ModelName, Code, DateEntered FROM dbo.#Cars 
+
+DROP TABLE dbo.[#Cars]
+---
+
+--Table Variable: 
+A table variable's lifespan is only for the duration of the transaction that it runs in
+
+DECLARE @Cars table 
+( 
+   Car_id int NOT NULL, 
+   ColorCode varchar(10), 
+   ModelName varchar(20), 
+   Code int, 
+   DateEntered datetime 
+)
+
+INSERT INTO @Cars (Car_id, ColorCode, ModelName, Code, DateEntered) 
+VALUES (1,'BlueGreen', 'Austen', 200801, GETDATE()) 
+
+SELECT Car_id, ColorCode, ModelName, Code, DateEntered FROM @Cars
+
+
+-Table variables can not have Non-Clustered Indexes
+-You can not create constraints in table variables
+-You can not create default values on table variable columns
+-Statistics can not be created against table variables
+
+---
+CREATE FUNCTION dbo.usp_customersbyPostalCode ( @PostalCode VARCHAR(15) ) 
+RETURNS 
+   @CustomerHitsTab TABLE ( 
+      [CustomerID] [nchar] (5), 
+      [ContactName] [nvarchar] (30), 
+      [Phone] [nvarchar] (24), 
+      [Fax] [nvarchar] (24) 
+   ) 
+AS 
+BEGIN 
+   DECLARE @HitCount INT 
+
+   INSERT INTO @CustomerHitsTab 
+   SELECT 
+      [CustomerID], 
+      [ContactName], 
+      [Phone], 
+      [Fax] 
+   FROM [Northwind].[dbo].[Customers] 
+   WHERE PostalCode = @PostalCode 
+
+   SELECT @HitCount = COUNT(*) FROM @CustomerHitsTab 
+
+   IF @HitCount = 0 
+   --No Records Match Criteria 
+      INSERT INTO @CustomerHitsTab ( 
+         [CustomerID], 
+         [ContactName], 
+         [Phone], 
+         [Fax] ) 
+      VALUES ('','No Companies In Area','','') 
+
+   RETURN 
+END 
+GO
+
+SELECT * FROM dbo.usp_customersbyPostalCode('1010')
+
+
+
+
+
+
+
