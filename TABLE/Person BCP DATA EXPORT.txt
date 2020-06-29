@@ -1,0 +1,56 @@
+https://www.sqlshack.com/bcp-bulk-copy-program-command-in-action/
+
+
+----------------------------------------------------------------------------------------------------
+BCP : Generated Format File - Comma delimited(-t,)
+----------------------------------------------------------------------------------------------------
+BCP Person.Person format -null -S HOST -U sa -P 1 -d AdventureWorks -c -x -f "R:\Person.Person.xml" -T –t,
+BCP Person.Person format -null -S HOST -U sa -P 1 -d AdventureWorks -c    -f "R:\Person.Person.fmt" -T –t,
+
+----------------------------------------------------------------------------------------------------
+BCP : DATA EXPORT
+----------------------------------------------------------------------------------------------------
+C:\Users\Admin> 1. BCP AdventureWorks.Person.Person out R:\Person.txt -S HOST -T -c –b1000 –t,
+C:\Users\Admin> 2. bcp "SELECT * FROM AdventureWorks.Person.Person" queryout R:\Person.txt -N -S HOST -T -c
+C:\Users\Admin> *** same results ***
+C:\Users\Admin> bcp "SELECT * FROM AdventureWorks.Person.Person" queryout R:\Person.txt -N -S HOST -T -c –b1000 –t,
+R:\Person.txt   : This is the output file where the data is dumped to
+-T              : Trusted Windows authentication
+-t,             : define comma as the field separator
+-w              : Use wide width data format
+-b1000          : Export the data in batches of 1000 rows
+
+
+C:\Windows\system32>bcp "SELECT * FROM AdventureWorks.Person.Person" queryout R:\Person.txt -N -S HOST -T -c -b1000 -t,
+Warning: -c overrides -N.
+
+Starting copy...
+SQLState = S1000, NativeError = 0
+Error = [Microsoft][ODBC Driver 13 for SQL Server]Warning: BCP import with a format file will convert empty strings in delimited columns to NULL.
+1000 rows successfully bulk-copied to host-file. Total received: 1000
+1000 rows successfully bulk-copied to host-file. Total received: 2000
+1000 rows successfully bulk-copied to host-file. Total received: 3000
+1000 rows successfully bulk-copied to host-file. Total received: 4000
+1000 rows successfully bulk-copied to host-file. Total received: 5000
+1000 rows successfully bulk-copied to host-file. Total received: 6000
+1000 rows successfully bulk-copied to host-file. Total received: 7000
+1000 rows successfully bulk-copied to host-file. Total received: 8000
+1000 rows successfully bulk-copied to host-file. Total received: 9000
+1000 rows successfully bulk-copied to host-file. Total received: 10000
+1000 rows successfully bulk-copied to host-file. Total received: 11000
+1000 rows successfully bulk-copied to host-file. Total received: 12000
+1000 rows successfully bulk-copied to host-file. Total received: 13000
+1000 rows successfully bulk-copied to host-file. Total received: 14000
+1000 rows successfully bulk-copied to host-file. Total received: 15000
+1000 rows successfully bulk-copied to host-file. Total received: 16000
+1000 rows successfully bulk-copied to host-file. Total received: 17000
+1000 rows successfully bulk-copied to host-file. Total received: 18000
+1000 rows successfully bulk-copied to host-file. Total received: 19000
+
+19972 rows copied.
+Network packet size (bytes): 4096
+Clock Time (ms.) Total     : 328    Average : (60890.24 rows per sec.)
+
+C:\Windows\system32>
+----------------------------------------------------------------------------------------------------
+

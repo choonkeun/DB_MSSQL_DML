@@ -1,0 +1,15 @@
+14.0
+13
+1       SQLCHAR             0       12      ","      1     BusinessEntityID                               ""
+2       SQLCHAR             0       4       ","      2     PersonType                                     SQL_Latin1_General_CP1_CI_AS
+3       SQLCHAR             0       1       ","      3     NameStyle                                      ""
+4       SQLCHAR             0       16      ","      4     Title                                          SQL_Latin1_General_CP1_CI_AS
+5       SQLCHAR             0       100     ","      5     FirstName                                      SQL_Latin1_General_CP1_CI_AS
+6       SQLCHAR             0       100     ","      6     MiddleName                                     SQL_Latin1_General_CP1_CI_AS
+7       SQLCHAR             0       100     ","      7     LastName                                       SQL_Latin1_General_CP1_CI_AS
+8       SQLCHAR             0       20      ","      8     Suffix                                         SQL_Latin1_General_CP1_CI_AS
+9       SQLCHAR             0       12      ","      9     EmailPromotion                                 ""
+10      SQLCHAR             0       0       ","      10    AdditionalContactInfo                          ""
+11      SQLCHAR             0       0       ","      11    Demographics                                   ""
+12      SQLCHAR             0       37      ","      12    rowguid                                        ""
+13      SQLCHAR             0       24      "\r\n"   13    ModifiedDate                                   ""
