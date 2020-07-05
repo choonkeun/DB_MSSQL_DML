@@ -1,5 +1,5 @@
-
 https://codingsight.com/methods-to-rank-rows-in-sql-server-rownumber-rank-denserank-and-ntile/
+http://www.techsapphire.in/index/sql_complex_queries_query_optimization_and_interview_questions_sql_server_2016/0-190
 
 CREATE TABLE StudentScore
 (
@@ -21,10 +21,32 @@ SELECT * FROM StudentScore ORDER BY Student_Score
 
 --ROW_NUMBER() 
 SELECT *, ROW_NUMBER() OVER( ORDER BY Student_Score) AS RowNumberRank
-FROM StudentScore
+FROM    StudentScore
 
 SELECT *, ROW_NUMBER() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
-FROM StudentScore
+FROM    StudentScore
+
+SELECT  
+      row_number() over(ORDER BY (SELECT 1)) rownum
+    , row_number() over(PARTITION BY cat.categoryid ORDER BY prod.productid) ProductWiseRowNum
+    , cat.CategoryName
+    , prod.ProductName
+FROM    Categories cat
+INNER JOIN products prod ON cat.CategoryID=prod.CategoryID
+
+rownum   ProductWiseRowNum   CategoryName    ProductName
+-------- ------------------- --------------- ----------------------------------------
+1        1                   Beverages       Chai
+2        2                   Beverages       Chang
+...
+9        9                   Beverages       Laughing Lumberjack Lager
+10       10                  Beverages       Outback Lager
+11       11                  Beverages       Rhönbräu Klosterbier
+12       12                  Beverages       Lakkalikööri
+13       1                   Condiments      Aniseed Syrup
+14       2                   Condiments      Chef Anton's Cajun Seasoning
+15       3                   Condiments      Chef Anton's Gumbo Mix
+16       4                   Condiments      Grandma's Boysenberry Spread
 
 --RANK()
 SELECT *, RANK() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
@@ -34,15 +56,175 @@ FROM StudentScore
 SELECT *, DENSE_RANK() OVER(PARTITION BY Student_Score  ORDER BY Student_Score) AS RowNumberRank
 FROM StudentScore
 
+SELECT dense_rank() over(ORDER BY cat.categoryid) CategoryWiseRowNum
+    , cat.CategoryName
+    , ROW_NUMBER() over(PARTITION BY cat.categoryid ORDER BY prod.productid) ProductWiseRowNum
+    , prod.ProductName
+FROM    Categories cat
+INNER JOIN products prod ON cat.CategoryID=prod.CategoryID
+
+CategoryWiseRowNum   CategoryName    ProductWiseRowNum    ProductName
+-------------------- --------------- -------------------- ----------------------------------------
+1                    Beverages       1                    Chai
+1                    Beverages       2                    Chang
+...
+1                    Beverages       9                    Laughing Lumberjack Lager
+1                    Beverages       10                   Outback Lager
+1                    Beverages       11                   Rhönbräu Klosterbier
+1                    Beverages       12                   Lakkalikööri
+2                    Condiments      1                    Aniseed Syrup
+2                    Condiments      2                    Chef Anton's Cajun Seasoning
+...
+2                    Condiments      6                    Genen Shouyu
+2                    Condiments      7                    Gula Malacca
+2                    Condiments      8                    Sirop d'érable
+
+--OVER(ORDER BY) RunningTotal
+
+SELECT ProductName
+, TotalAmout
+, sum([TotalAmout]) OVER(ORDER BY ProductName) AS RunningTotal
+FROM (
+	SELECT	prod.ProductName, sum(ord.Quantity*ord.UnitPrice) [TotalAmout]
+	FROM	[Order Details] ord
+	INNER JOIN Products prod ON ord.ProductID=prod.ProductID
+	GROUP BY prod.ProductName
+	) t
+
+ProductName                              TotalAmout            RunningTotal
+---------------------------------------- --------------------- ---------------------
+Alice Mutton                             35482.20              35482.20
+Aniseed Syrup                            3080.00               38562.20
+Boston Crab Meat                         19048.30              57610.50
+Camembert Pierrot                        50286.00              107896.50
+Carnarvon Tigers                         31987.50              139884.00
+Chai                                     14277.60              154161.60
+Chang                                    18559.20              172720.80
+Chartreuse verte                         13150.80              185871.60
+---
+SELECT cat.CategoryName, ProductName, TotalAmout,
+       SUM([TotalAmout]) OVER(PARTITION BY cat.categoryid ORDER BY productname) AS RunningTotal
+FROM (
+		SELECT prod.CategoryID, prod.ProductName, SUM(ord.Quantity*ord.UnitPrice) [TotalAmout]
+		FROM [Order Details] ord
+		INNER JOIN Products prod ON ord.ProductID=prod.ProductID
+		GROUP BY prod.ProductName, prod.CategoryID
+	) t
+INNER JOIN Categories cat ON t.CategoryID=cat.CategoryID
+
+CategoryName    ProductName                              TotalAmout            RunningTotal
+--------------- ---------------------------------------- --------------------- ---------------------
+Beverages       Chai                                     14277.60              14277.60
+Beverages       Chang                                    18559.20              32836.80
+...
+Beverages       Sasquatch Ale                            6678.00               271990.15
+Beverages       Steeleye Stout                           14536.80              286526.95
+
+Condiments      Aniseed Syrup                            3080.00               3080.00
+Condiments      Chef Anton's Cajun Seasoning             9424.80               12504.80
+Condiments      Chef Anton's Gumbo Mix                   5801.15               18305.95
+...
+Condiments      Original Frankfurter grüne Soße          9685.00               79559.65
+Condiments      Sirop d'érable                           16438.80              95998.45
+Condiments      Vegie-spread                             17696.30              113694.75
+
+Confections     Chocolade                                1542.75               1542.75
+Confections     Gumbär Gummibärchen                      21534.90              23077.65
+Confections     Maxilaku                                 9500.00               32577.65
+...
+Confections     Scottish Longbreads                      9362.50               79971.30
+Confections     Sir Rodney's Marmalade                   23635.80              103607.10
+
+
+--Lead and Lag
+SELECT cust.CustomerID, cust.CompanyName, ord.OrderDate,
+       LEAD(ord.OrderDate) over(PARTITION BY cust.companyname  ORDER BY ord.orderdate) [NextOrderDate],
+       LAG(ord.OrderDate)  over(PARTITION BY cust.companyname  ORDER BY ord.orderdate) [PreviousOrderDate]
+FROM Orders ord
+INNER JOIN Customers cust ON ord.CustomerID=cust.CustomerID 
+
+CustomerID CompanyName                              OrderDate               NextOrderDate           PreviousOrderDate
+---------- ---------------------------------------- ----------------------- ----------------------- -----------------------
+ALFKI      Alfreds Futterkiste                      1997-08-25 00:00:00.000 1997-10-03 00:00:00.000 NULL
+ALFKI      Alfreds Futterkiste                      1997-10-03 00:00:00.000 1997-10-13 00:00:00.000 1997-08-25 00:00:00.000
+ALFKI      Alfreds Futterkiste                      1997-10-13 00:00:00.000 1998-01-15 00:00:00.000 1997-10-03 00:00:00.000
+ALFKI      Alfreds Futterkiste                      1998-01-15 00:00:00.000 1998-03-16 00:00:00.000 1997-10-13 00:00:00.000
+ALFKI      Alfreds Futterkiste                      1998-03-16 00:00:00.000 1998-04-09 00:00:00.000 1998-01-15 00:00:00.000
+ALFKI      Alfreds Futterkiste                      1998-04-09 00:00:00.000 NULL                    1998-03-16 00:00:00.000
+
+ANATR      Ana Trujillo Emparedados y helados       1996-09-18 00:00:00.000 1997-08-08 00:00:00.000 NULL
+ANATR      Ana Trujillo Emparedados y helados       1997-08-08 00:00:00.000 1997-11-28 00:00:00.000 1996-09-18 00:00:00.000
+ANATR      Ana Trujillo Emparedados y helados       1997-11-28 00:00:00.000 1998-03-04 00:00:00.000 1997-08-08 00:00:00.000
+ANATR      Ana Trujillo Emparedados y helados       1998-03-04 00:00:00.000 NULL                    1997-11-28 00:00:00.000
+
+ANTON      Antonio Moreno Taquería                  1996-11-27 00:00:00.000 1997-04-15 00:00:00.000 NULL
+ANTON      Antonio Moreno Taquería                  1997-04-15 00:00:00.000 1997-05-13 00:00:00.000 1996-11-27 00:00:00.000
+ANTON      Antonio Moreno Taquería                  1997-05-13 00:00:00.000 1997-06-19 00:00:00.000 1997-04-15 00:00:00.000
+
+---
+WITH CTE AS (
+	SELECT cust.CustomerID, cust.CompanyName, ord.OrderDate,
+          LEAD(ord.OrderDate) over(PARTITION BY cust.companyname ORDER BY ord.orderdate) [NextOrderDate],
+          LAG(ord.OrderDate) over(PARTITION BY cust.companyname  ORDER BY ord.orderdate) [PreviousOrderDate]
+	FROM orders ord
+	INNER JOIN Customers cust ON ord.CustomerID=cust.CustomerID
+)
+SELECT CustomerID, 
+	CompanyName,
+	ISNULL(DATEDIFF(dd,OrderDate,isnull(NextOrderDate,OrderDate)),0) [NextDateDifference],
+	ISNULL(DATEDIFF(dd,isnull(PreviousOrderDate,OrderDate),OrderDate),0) [PreviousDateDifference],
+	OrderDate,
+	NextOrderDate,
+	PreviousOrderDate
+FROM CTE
+
+CustomerID CompanyName                              NextDateDifference PreviousDateDifference OrderDate               NextOrderDate           PreviousOrderDate
+---------- ---------------------------------------- ------------------ ---------------------- ----------------------- ----------------------- -----------------------
+ALFKI      Alfreds Futterkiste                      39                 0                      1997-08-25 00:00:00.000 1997-10-03 00:00:00.000 NULL
+ALFKI      Alfreds Futterkiste                      10                 39                     1997-10-03 00:00:00.000 1997-10-13 00:00:00.000 1997-08-25 00:00:00.000
+ALFKI      Alfreds Futterkiste                      94                 10                     1997-10-13 00:00:00.000 1998-01-15 00:00:00.000 1997-10-03 00:00:00.000
+ALFKI      Alfreds Futterkiste                      60                 94                     1998-01-15 00:00:00.000 1998-03-16 00:00:00.000 1997-10-13 00:00:00.000
+ALFKI      Alfreds Futterkiste                      24                 60                     1998-03-16 00:00:00.000 1998-04-09 00:00:00.000 1998-01-15 00:00:00.000
+ALFKI      Alfreds Futterkiste                      0                  24                     1998-04-09 00:00:00.000 NULL                    1998-03-16 00:00:00.000
+ANATR      Ana Trujillo Emparedados y helados       324                0                      1996-09-18 00:00:00.000 1997-08-08 00:00:00.000 NULL
+ANATR      Ana Trujillo Emparedados y helados       112                324                    1997-08-08 00:00:00.000 1997-11-28 00:00:00.000 1996-09-18 00:00:00.000
+ANATR      Ana Trujillo Emparedados y helados       96                 112                    1997-11-28 00:00:00.000 1998-03-04 00:00:00.000 1997-08-08 00:00:00.000
+ANATR      Ana Trujillo Emparedados y helados       0                  96                     1998-03-04 00:00:00.000 NULL                    1997-11-28 00:00:00.000
+ANTON      Antonio Moreno Taquería                  139                0                      1996-11-27 00:00:00.000 1997-04-15 00:00:00.000 NULL
+ANTON      Antonio Moreno Taquería                  28                 139                    1997-04-15 00:00:00.000 1997-05-13 00:00:00.000 1996-11-27 00:00:00.000
+ANTON      Antonio Moreno Taquería                  37                 28                     1997-05-13 00:00:00.000 1997-06-19 00:00:00.000 1997-04-15 00:00:00.000
+ANTON      Antonio Moreno Taquería                  95                 37                     1997-06-19 00:00:00.000 1997-09-22 00:00:00.000 1997-05-13 00:00:00.000
+
+
+
 --NTILE(N)
 SELECT *,  NTILE(4) OVER( ORDER BY Student_Score) AS NTILERank
 FROM StudentScore
 
 ---Putting All Together---
-SELECT *, ROW_NUMBER() OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RowNumberRank,
-          RANK ()  OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RankRank,
-		  DENSE_RANK ()  OVER(PARTITION BY CLASS ORDER BY Student_Score) AS DenseRankRank,
-		  NTILE(7) OVER(PARTITION BY CLASS ORDER BY Student_Score) AS NTILERank
+SELECT *, ROW_NUMBER()  OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RowNumberRank,
+          RANK ()       OVER(PARTITION BY CLASS ORDER BY Student_Score) AS RankRank,
+		  DENSE_RANK () OVER(PARTITION BY CLASS ORDER BY Student_Score) AS DenseRankRank,
+		  NTILE(7)      OVER(PARTITION BY CLASS ORDER BY Student_Score) AS NTILERank
 FROM StudentScore
 GO
+
+---
+SELECT *  FROM 
+(
+	SELECT 1 AS ID, 'ind' AS CITY
+	UNION ALL
+	SELECT 2 AS ID, 'aus' AS CITY
+	UNION ALL
+	SELECT 3 AS ID, 'sri' AS CITY
+	UNION ALL
+	SELECT 4 AS ID, 'Eng' AS CITY
+) VW
+
+
+SELECT IIF(1 =  2, 'a', 'b')	--false: b
+SELECT IIF(1 != 2, 'a', 'b')	--true:  a
+
+SELECT CHOOSE(1,'hello','friend','ghost')	--hello
+SELECT CHOOSE(3,'hello','friend','ghost')	--ghost
 
